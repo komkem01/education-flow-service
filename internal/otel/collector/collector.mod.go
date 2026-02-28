@@ -1,6 +1,6 @@
 package collector
 
-import "mcop/internal/config"
+import "education-flow/internal/config"
 
 type Module struct {
 	Svc *Service

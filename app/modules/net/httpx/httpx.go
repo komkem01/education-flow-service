@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"mcop/app/utils/syncx"
+	"education-flow/app/utils/syncx"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )

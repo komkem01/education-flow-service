@@ -1,7 +1,7 @@
 package kafka
 
 import (
-	"mcop/internal/config"
+	"education-flow/internal/config"
 )
 
 type Module struct {

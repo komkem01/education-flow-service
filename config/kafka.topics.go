@@ -1,6 +1,6 @@
 package config
 
-import "mcop/internal/kafka"
+import "education-flow/internal/kafka"
 
 // Def.
 var kafkaConf = kafka.Config{

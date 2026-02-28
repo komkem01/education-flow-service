@@ -3,7 +3,7 @@ package routes
 import (
 	"net/http"
 
-	"mcop/app/modules"
+	"education-flow/app/modules"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

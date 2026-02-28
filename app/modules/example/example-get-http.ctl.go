@@ -1,9 +1,9 @@
 package example
 
 import (
-	"mcop/app/modules/net/httpx"
-	"mcop/app/utils"
-	"mcop/app/utils/base"
+	"education-flow/app/modules/net/httpx"
+	"education-flow/app/utils"
+	"education-flow/app/utils/base"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel/attribute"

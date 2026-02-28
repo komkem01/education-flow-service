@@ -1,8 +1,8 @@
 package config
 
 import (
-	dbdto "mcop/internal/database/dto"
-	rddto "mcop/internal/redis/dto"
+	dbdto "education-flow/internal/database/dto"
+	rddto "education-flow/internal/redis/dto"
 )
 
 type Database struct {

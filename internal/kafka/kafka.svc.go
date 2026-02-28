@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"mcop/app/utils/syncx"
-	"mcop/internal/config"
-	kafkainf "mcop/internal/kafka/inf"
-	"mcop/internal/log"
-	"mcop/internal/provider"
+	"education-flow/app/utils/syncx"
+	"education-flow/internal/config"
+	kafkainf "education-flow/internal/kafka/inf"
+	"education-flow/internal/log"
+	"education-flow/internal/provider"
 
 	"github.com/IBM/sarama"
 )

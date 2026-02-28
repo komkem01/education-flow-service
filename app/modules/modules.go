@@ -4,19 +4,19 @@ import (
 	"log/slog"
 	"sync"
 
-	"mcop/app/modules/entities"
-	"mcop/app/modules/example"
-	"mcop/app/modules/sentry"
-	"mcop/app/modules/specs"
-	"mcop/internal/config"
-	"mcop/internal/database"
-	"mcop/internal/log"
-	"mcop/internal/otel/collector"
+	"education-flow/app/modules/entities"
+	"education-flow/app/modules/example"
+	"education-flow/app/modules/sentry"
+	"education-flow/app/modules/specs"
+	"education-flow/internal/config"
+	"education-flow/internal/database"
+	"education-flow/internal/log"
+	"education-flow/internal/otel/collector"
 
-	exampletwo "mcop/app/modules/example-two"
+	exampletwo "education-flow/app/modules/example-two"
 
-	appConf "mcop/config"
-	// "mcop/app/modules/kafka"
+	appConf "education-flow/config"
+	// "education-flow/app/modules/kafka"
 )
 
 type Modules struct {

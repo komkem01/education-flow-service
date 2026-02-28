@@ -3,7 +3,7 @@ package entitiesinf
 import (
 	"context"
 
-	"mcop/app/modules/entities/ent"
+	"education-flow/app/modules/entities/ent"
 
 	"github.com/google/uuid"
 )

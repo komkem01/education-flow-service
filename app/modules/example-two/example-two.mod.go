@@ -1,8 +1,8 @@
 package exampletwo
 
 import (
-	entitiesinf "mcop/app/modules/entities/inf"
-	"mcop/internal/config"
+	entitiesinf "education-flow/app/modules/entities/inf"
+	"education-flow/internal/config"
 )
 
 type (

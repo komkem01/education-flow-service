@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
-	"mcop/app/modules"
-	"mcop/internal/log"
-	"mcop/internal/provider"
-	"mcop/routes"
+	"education-flow/app/modules"
+	"education-flow/internal/log"
+	"education-flow/internal/provider"
+	"education-flow/routes"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
