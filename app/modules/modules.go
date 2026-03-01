@@ -6,6 +6,9 @@ import (
 
 	"education-flow/app/modules/entities"
 	"education-flow/app/modules/example"
+	"education-flow/app/modules/genders"
+	"education-flow/app/modules/prefixes"
+	"education-flow/app/modules/schools"
 	"education-flow/app/modules/sentry"
 	"education-flow/app/modules/specs"
 	"education-flow/internal/config"
@@ -27,6 +30,9 @@ type Modules struct {
 	Sentry *sentry.Module
 	DB     *database.DatabaseModule
 	ENT    *entities.Module
+	School *schools.Module
+	Gender *genders.Module
+	Prefix *prefixes.Module
 	// Kafka *kafka.Module
 	Example  *example.Module
 	Example2 *exampletwo.Module
@@ -45,6 +51,9 @@ func modulesInit() {
 
 	db := database.New(conf.Database.Sql)
 	entitiesMod := entities.New(db.Svc.DB())
+	schoolMod := schools.New(config.Conf[schools.Config](confMod.Svc), entitiesMod.Svc)
+	genderMod := genders.New(config.Conf[genders.Config](confMod.Svc), entitiesMod.Svc)
+	prefixMod := prefixes.New(config.Conf[prefixes.Config](confMod.Svc), entitiesMod.Svc)
 	exampleMod := example.New(config.Conf[example.Config](confMod.Svc), entitiesMod.Svc)
 	exampleMod2 := exampletwo.New(config.Conf[exampletwo.Config](confMod.Svc), entitiesMod.Svc)
 	// kafka := kafka.New(&conf.Kafka)
@@ -56,6 +65,9 @@ func modulesInit() {
 		Sentry:   sentryMod,
 		DB:       db,
 		ENT:      entitiesMod,
+		School:   schoolMod,
+		Gender:   genderMod,
+		Prefix:   prefixMod,
 		Example:  exampleMod,
 		Example2: exampleMod2,
 	}

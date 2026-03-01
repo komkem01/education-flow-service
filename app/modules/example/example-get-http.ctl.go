@@ -20,7 +20,7 @@ func (c *Controller) GetHttpReq(ctx *gin.Context) {
 	req, err := httpx.NewRequest(ctx.Request.Context(), "GET", "https://httpbin.org/get", nil)
 	if err != nil {
 		log.Errf("example.get.http.error: %s", err)
-		base.BadRequest(ctx, "http-request-error", nil)
+		base.InternalServerError(ctx, "internal-server-error", nil)
 		return
 	}
 	resp, err := c.cli.Do(req)

@@ -25,7 +25,7 @@ func (c *Controller) Get(ctx *gin.Context) {
 	span, log := utils.LogSpanFromGin(ctx)
 
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": "Invalid request"})
+		base.BadRequest(ctx, "bad-request", nil)
 		return
 	}
 	span.AddEvent("example.get.request", trace.WithAttributes(

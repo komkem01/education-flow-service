@@ -2,3 +2,11 @@ success: สำเร็จ
 internal-error: เกิดข้อผิดพลาดจากเซิร์ฟเวอร์
 invalid-request-form: กรอกข้อมูลไม่ถูกต้อง
 example-message-ok: โอเค
+internal-server-error: เกิดข้อผิดพลาดจากเซิร์ฟเวอร์
+bad-request: คำขอไม่ถูกต้อง
+invalid-id: รหัสอ้างอิงไม่ถูกต้อง
+school-not-found: ไม่พบข้อมูลโรงเรียน
+gender-not-found: ไม่พบข้อมูลเพศ
+prefix-not-found: ไม่พบข้อมูลคำนำหน้า
+gender-name-duplicate: ชื่อเพศนี้มีอยู่แล้ว
+prefix-name-duplicate: ชื่อคำนำหน้านี้มีอยู่แล้ว

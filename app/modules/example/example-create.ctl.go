@@ -25,7 +25,7 @@ func (c *Controller) Create(ctx *gin.Context) {
 	var res CreateResponse
 	span, log := utils.LogSpanFromGin(ctx)
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": "Invalid request"})
+		base.BadRequest(ctx, "bad-request", nil)
 		return
 	}
 	span.AddEvent("example.create.request", trace.WithAttributes(
@@ -40,7 +40,7 @@ func (c *Controller) Create(ctx *gin.Context) {
 	example, err := c.svc.Create(ctx, userID)
 	if err != nil {
 		log.Errf("example.create.error: %s", err)
-		base.BadRequest(ctx, "example-create-failed", nil)
+		base.InternalServerError(ctx, "internal-server-error", nil)
 		return
 	}
 
