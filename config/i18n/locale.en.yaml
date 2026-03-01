@@ -10,3 +10,5 @@ gender-not-found: Gender not found
 prefix-not-found: Prefix not found
 gender-name-duplicate: Gender name already exists
 prefix-name-duplicate: Prefix name already exists
+member-not-found: Member not found
+member-email-duplicate: Email already exists

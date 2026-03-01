@@ -10,3 +10,5 @@ gender-not-found: ไม่พบข้อมูลเพศ
 prefix-not-found: ไม่พบข้อมูลคำนำหน้า
 gender-name-duplicate: ชื่อเพศนี้มีอยู่แล้ว
 prefix-name-duplicate: ชื่อคำนำหน้านี้มีอยู่แล้ว
+member-not-found: ไม่พบข้อมูลสมาชิก
+member-email-duplicate: อีเมลนี้มีอยู่แล้ว

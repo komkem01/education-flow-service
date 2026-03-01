@@ -54,3 +54,11 @@ type PrefixEntity interface {
 	DeletePrefixByID(ctx context.Context, id uuid.UUID) error
 	ListPrefixes(ctx context.Context, onlyActive bool) ([]*ent.Prefix, error)
 }
+
+type MemberEntity interface {
+	CreateMember(ctx context.Context, member *ent.Member) (*ent.Member, error)
+	GetMemberByID(ctx context.Context, id uuid.UUID) (*ent.Member, error)
+	UpdateMemberByID(ctx context.Context, id uuid.UUID, member *ent.Member) (*ent.Member, error)
+	DeleteMemberByID(ctx context.Context, id uuid.UUID) error
+	ListMembers(ctx context.Context, schoolID *uuid.UUID, role *ent.MemberRole, onlyActive bool) ([]*ent.Member, error)
+}

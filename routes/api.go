@@ -21,18 +21,24 @@ func api(r *gin.RouterGroup, mod *modules.Modules) {
 	r.GET("/schools", mod.School.Ctl.List)
 	r.GET("/schools/:id", mod.School.Ctl.Get)
 	r.POST("/schools", mod.School.Ctl.Create)
-	r.PUT("/schools/:id", mod.School.Ctl.Update)
+	r.PATCH("/schools/:id", mod.School.Ctl.Update)
 	r.DELETE("/schools/:id", mod.School.Ctl.Delete)
 
 	r.GET("/genders", mod.Gender.Ctl.List)
 	r.GET("/genders/:id", mod.Gender.Ctl.Get)
 	r.POST("/genders", mod.Gender.Ctl.Create)
-	r.PUT("/genders/:id", mod.Gender.Ctl.Update)
+	r.PATCH("/genders/:id", mod.Gender.Ctl.Update)
 	r.DELETE("/genders/:id", mod.Gender.Ctl.Delete)
 
 	r.GET("/prefixes", mod.Prefix.Ctl.List)
 	r.GET("/prefixes/:id", mod.Prefix.Ctl.Get)
 	r.POST("/prefixes", mod.Prefix.Ctl.Create)
-	r.PUT("/prefixes/:id", mod.Prefix.Ctl.Update)
+	r.PATCH("/prefixes/:id", mod.Prefix.Ctl.Update)
 	r.DELETE("/prefixes/:id", mod.Prefix.Ctl.Delete)
+
+	r.GET("/members", mod.Member.Ctl.List)
+	r.GET("/members/:id", mod.Member.Ctl.Get)
+	r.POST("/members", mod.Member.Ctl.Create)
+	r.PATCH("/members/:id", mod.Member.Ctl.Update)
+	r.DELETE("/members/:id", mod.Member.Ctl.Delete)
 }

@@ -13,8 +13,10 @@ var (
 	GenderNotFound = "gender-not-found"
 	PrefixNotFound = "prefix-not-found"
 
-	GenderNameDuplicate = "gender-name-duplicate"
-	PrefixNameDuplicate = "prefix-name-duplicate"
+	GenderNameDuplicate  = "gender-name-duplicate"
+	PrefixNameDuplicate  = "prefix-name-duplicate"
+	MemberNotFound       = "member-not-found"
+	MemberEmailDuplicate = "member-email-duplicate"
 
 	ExampleMessageOK = "example-message-ok"
 )
