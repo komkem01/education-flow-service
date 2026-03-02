@@ -9,6 +9,13 @@ school-not-found: School not found
 gender-not-found: Gender not found
 prefix-not-found: Prefix not found
 academic-year-not-found: Academic year not found
+classroom-not-found: Classroom not found
+subject-not-found: Subject not found
+subject-assignment-not-found: Subject assignment not found
+schedule-not-found: Schedule not found
+question-bank-not-found: Question bank item not found
+question-choice-not-found: Question choice not found
+assessment-set-not-found: Assessment set not found
 gender-name-duplicate: Gender name already exists
 prefix-name-duplicate: Prefix name already exists
 academic-year-duplicate: Academic year already exists

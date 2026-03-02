@@ -6,6 +6,8 @@ import (
 
 	academicyears "education-flow/app/modules/academic-years"
 	"education-flow/app/modules/admins"
+	assessmentsets "education-flow/app/modules/assessment-sets"
+	"education-flow/app/modules/classrooms"
 	"education-flow/app/modules/entities"
 	"education-flow/app/modules/example"
 	"education-flow/app/modules/genders"
@@ -14,6 +16,9 @@ import (
 	"education-flow/app/modules/parents"
 	paymenttransactions "education-flow/app/modules/payment-transactions"
 	"education-flow/app/modules/prefixes"
+	questionbanks "education-flow/app/modules/question-banks"
+	questionchoices "education-flow/app/modules/question-choices"
+	"education-flow/app/modules/schedules"
 	"education-flow/app/modules/schools"
 	"education-flow/app/modules/sentry"
 	"education-flow/app/modules/specs"
@@ -26,6 +31,8 @@ import (
 	studentgraderecords "education-flow/app/modules/student-grade-records"
 	studentinvoices "education-flow/app/modules/student-invoices"
 	"education-flow/app/modules/students"
+	subjectassignments "education-flow/app/modules/subject-assignments"
+	"education-flow/app/modules/subjects"
 	teachereducations "education-flow/app/modules/teacher-educations"
 	teacherleavelogs "education-flow/app/modules/teacher-leave-logs"
 	teacherpdalogs "education-flow/app/modules/teacher-pda-logs"
@@ -55,6 +62,13 @@ type Modules struct {
 	School                       *schools.Module
 	Gender                       *genders.Module
 	Prefix                       *prefixes.Module
+	Classroom                    *classrooms.Module
+	Subject                      *subjects.Module
+	SubjectAssignment            *subjectassignments.Module
+	Schedule                     *schedules.Module
+	QuestionBank                 *questionbanks.Module
+	QuestionChoice               *questionchoices.Module
+	AssessmentSet                *assessmentsets.Module
 	Member                       *members.Module
 	Admin                        *admins.Module
 	Staff                        *staffs.Module
@@ -97,6 +111,13 @@ func modulesInit() {
 	schoolMod := schools.New(config.Conf[schools.Config](confMod.Svc), entitiesMod.Svc)
 	genderMod := genders.New(config.Conf[genders.Config](confMod.Svc), entitiesMod.Svc)
 	prefixMod := prefixes.New(config.Conf[prefixes.Config](confMod.Svc), entitiesMod.Svc)
+	classroomMod := classrooms.New(config.Conf[classrooms.Config](confMod.Svc), entitiesMod.Svc)
+	subjectMod := subjects.New(config.Conf[subjects.Config](confMod.Svc), entitiesMod.Svc)
+	subjectAssignmentMod := subjectassignments.New(config.Conf[subjectassignments.Config](confMod.Svc), entitiesMod.Svc)
+	scheduleMod := schedules.New(config.Conf[schedules.Config](confMod.Svc), entitiesMod.Svc)
+	questionBankMod := questionbanks.New(config.Conf[questionbanks.Config](confMod.Svc), entitiesMod.Svc)
+	questionChoiceMod := questionchoices.New(config.Conf[questionchoices.Config](confMod.Svc), entitiesMod.Svc)
+	assessmentSetMod := assessmentsets.New(config.Conf[assessmentsets.Config](confMod.Svc), entitiesMod.Svc)
 	memberMod := members.New(config.Conf[members.Config](confMod.Svc), entitiesMod.Svc)
 	adminMod := admins.New(config.Conf[admins.Config](confMod.Svc), entitiesMod.Svc)
 	staffMod := staffs.New(config.Conf[staffs.Config](confMod.Svc), entitiesMod.Svc)
@@ -132,6 +153,13 @@ func modulesInit() {
 		School:                       schoolMod,
 		Gender:                       genderMod,
 		Prefix:                       prefixMod,
+		Classroom:                    classroomMod,
+		Subject:                      subjectMod,
+		SubjectAssignment:            subjectAssignmentMod,
+		Schedule:                     scheduleMod,
+		QuestionBank:                 questionBankMod,
+		QuestionChoice:               questionChoiceMod,
+		AssessmentSet:                assessmentSetMod,
 		Member:                       memberMod,
 		Admin:                        adminMod,
 		Staff:                        staffMod,

@@ -42,6 +42,48 @@ func api(r *gin.RouterGroup, mod *modules.Modules) {
 	r.PATCH("/prefixes/:id", mod.Prefix.Ctl.Update)
 	r.DELETE("/prefixes/:id", mod.Prefix.Ctl.Delete)
 
+	r.GET("/classrooms", mod.Classroom.Ctl.List)
+	r.GET("/classrooms/:id", mod.Classroom.Ctl.Get)
+	r.POST("/classrooms", mod.Classroom.Ctl.Create)
+	r.PATCH("/classrooms/:id", mod.Classroom.Ctl.Update)
+	r.DELETE("/classrooms/:id", mod.Classroom.Ctl.Delete)
+
+	r.GET("/subjects", mod.Subject.Ctl.List)
+	r.GET("/subjects/:id", mod.Subject.Ctl.Get)
+	r.POST("/subjects", mod.Subject.Ctl.Create)
+	r.PATCH("/subjects/:id", mod.Subject.Ctl.Update)
+	r.DELETE("/subjects/:id", mod.Subject.Ctl.Delete)
+
+	r.GET("/subject-assignments", mod.SubjectAssignment.Ctl.List)
+	r.GET("/subject-assignments/:id", mod.SubjectAssignment.Ctl.Get)
+	r.POST("/subject-assignments", mod.SubjectAssignment.Ctl.Create)
+	r.PATCH("/subject-assignments/:id", mod.SubjectAssignment.Ctl.Update)
+	r.DELETE("/subject-assignments/:id", mod.SubjectAssignment.Ctl.Delete)
+
+	r.GET("/schedules", mod.Schedule.Ctl.List)
+	r.GET("/schedules/:id", mod.Schedule.Ctl.Get)
+	r.POST("/schedules", mod.Schedule.Ctl.Create)
+	r.PATCH("/schedules/:id", mod.Schedule.Ctl.Update)
+	r.DELETE("/schedules/:id", mod.Schedule.Ctl.Delete)
+
+	r.GET("/question-banks", mod.QuestionBank.Ctl.List)
+	r.GET("/question-banks/:id", mod.QuestionBank.Ctl.Get)
+	r.POST("/question-banks", mod.QuestionBank.Ctl.Create)
+	r.PATCH("/question-banks/:id", mod.QuestionBank.Ctl.Update)
+	r.DELETE("/question-banks/:id", mod.QuestionBank.Ctl.Delete)
+
+	r.GET("/question-choices", mod.QuestionChoice.Ctl.List)
+	r.GET("/question-choices/:id", mod.QuestionChoice.Ctl.Get)
+	r.POST("/question-choices", mod.QuestionChoice.Ctl.Create)
+	r.PATCH("/question-choices/:id", mod.QuestionChoice.Ctl.Update)
+	r.DELETE("/question-choices/:id", mod.QuestionChoice.Ctl.Delete)
+
+	r.GET("/assessment-sets", mod.AssessmentSet.Ctl.List)
+	r.GET("/assessment-sets/:id", mod.AssessmentSet.Ctl.Get)
+	r.POST("/assessment-sets", mod.AssessmentSet.Ctl.Create)
+	r.PATCH("/assessment-sets/:id", mod.AssessmentSet.Ctl.Update)
+	r.DELETE("/assessment-sets/:id", mod.AssessmentSet.Ctl.Delete)
+
 	r.GET("/members", mod.Member.Ctl.List)
 	r.GET("/members/:id", mod.Member.Ctl.Get)
 	r.POST("/members", mod.Member.Ctl.Create)

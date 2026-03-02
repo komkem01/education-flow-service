@@ -63,6 +63,62 @@ type AcademicYearEntity interface {
 	ListAcademicYears(ctx context.Context, onlyActive bool, onlyCurrent bool) ([]*ent.AcademicYear, error)
 }
 
+type ClassroomEntity interface {
+	CreateClassroom(ctx context.Context, classroom *ent.Classroom) (*ent.Classroom, error)
+	GetClassroomByID(ctx context.Context, id uuid.UUID) (*ent.Classroom, error)
+	UpdateClassroomByID(ctx context.Context, id uuid.UUID, classroom *ent.Classroom) (*ent.Classroom, error)
+	DeleteClassroomByID(ctx context.Context, id uuid.UUID) error
+	ListClassrooms(ctx context.Context, schoolID *uuid.UUID) ([]*ent.Classroom, error)
+}
+
+type SubjectEntity interface {
+	CreateSubject(ctx context.Context, subject *ent.Subject) (*ent.Subject, error)
+	GetSubjectByID(ctx context.Context, id uuid.UUID) (*ent.Subject, error)
+	UpdateSubjectByID(ctx context.Context, id uuid.UUID, subject *ent.Subject) (*ent.Subject, error)
+	DeleteSubjectByID(ctx context.Context, id uuid.UUID) error
+	ListSubjects(ctx context.Context, schoolID *uuid.UUID) ([]*ent.Subject, error)
+}
+
+type SubjectAssignmentEntity interface {
+	CreateSubjectAssignment(ctx context.Context, subjectAssignment *ent.SubjectAssignment) (*ent.SubjectAssignment, error)
+	GetSubjectAssignmentByID(ctx context.Context, id uuid.UUID) (*ent.SubjectAssignment, error)
+	UpdateSubjectAssignmentByID(ctx context.Context, id uuid.UUID, subjectAssignment *ent.SubjectAssignment) (*ent.SubjectAssignment, error)
+	DeleteSubjectAssignmentByID(ctx context.Context, id uuid.UUID) error
+	ListSubjectAssignments(ctx context.Context, subjectID *uuid.UUID, teacherID *uuid.UUID, classroomID *uuid.UUID, academicYearID *uuid.UUID) ([]*ent.SubjectAssignment, error)
+}
+
+type ScheduleEntity interface {
+	CreateSchedule(ctx context.Context, schedule *ent.Schedule) (*ent.Schedule, error)
+	GetScheduleByID(ctx context.Context, id uuid.UUID) (*ent.Schedule, error)
+	UpdateScheduleByID(ctx context.Context, id uuid.UUID, schedule *ent.Schedule) (*ent.Schedule, error)
+	DeleteScheduleByID(ctx context.Context, id uuid.UUID) error
+	ListSchedules(ctx context.Context, subjectAssignmentID *uuid.UUID, dayOfWeek *ent.ScheduleDayOfWeek) ([]*ent.Schedule, error)
+}
+
+type QuestionBankEntity interface {
+	CreateQuestionBank(ctx context.Context, question *ent.QuestionBank) (*ent.QuestionBank, error)
+	GetQuestionBankByID(ctx context.Context, id uuid.UUID) (*ent.QuestionBank, error)
+	UpdateQuestionBankByID(ctx context.Context, id uuid.UUID, question *ent.QuestionBank) (*ent.QuestionBank, error)
+	DeleteQuestionBankByID(ctx context.Context, id uuid.UUID) error
+	ListQuestionBanks(ctx context.Context, subjectID *uuid.UUID, teacherID *uuid.UUID, questionType *ent.QuestionBankType) ([]*ent.QuestionBank, error)
+}
+
+type QuestionChoiceEntity interface {
+	CreateQuestionChoice(ctx context.Context, choice *ent.QuestionChoice) (*ent.QuestionChoice, error)
+	GetQuestionChoiceByID(ctx context.Context, id uuid.UUID) (*ent.QuestionChoice, error)
+	UpdateQuestionChoiceByID(ctx context.Context, id uuid.UUID, choice *ent.QuestionChoice) (*ent.QuestionChoice, error)
+	DeleteQuestionChoiceByID(ctx context.Context, id uuid.UUID) error
+	ListQuestionChoices(ctx context.Context, questionID *uuid.UUID) ([]*ent.QuestionChoice, error)
+}
+
+type AssessmentSetEntity interface {
+	CreateAssessmentSet(ctx context.Context, assessmentSet *ent.AssessmentSet) (*ent.AssessmentSet, error)
+	GetAssessmentSetByID(ctx context.Context, id uuid.UUID) (*ent.AssessmentSet, error)
+	UpdateAssessmentSetByID(ctx context.Context, id uuid.UUID, assessmentSet *ent.AssessmentSet) (*ent.AssessmentSet, error)
+	DeleteAssessmentSetByID(ctx context.Context, id uuid.UUID) error
+	ListAssessmentSets(ctx context.Context, subjectAssignmentID *uuid.UUID, onlyPublished bool) ([]*ent.AssessmentSet, error)
+}
+
 type MemberEntity interface {
 	CreateMember(ctx context.Context, member *ent.Member) (*ent.Member, error)
 	GetMemberByID(ctx context.Context, id uuid.UUID) (*ent.Member, error)

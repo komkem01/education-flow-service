@@ -9,6 +9,13 @@ school-not-found: ไม่พบข้อมูลโรงเรียน
 gender-not-found: ไม่พบข้อมูลเพศ
 prefix-not-found: ไม่พบข้อมูลคำนำหน้า
 academic-year-not-found: ไม่พบข้อมูลปีการศึกษา
+classroom-not-found: ไม่พบข้อมูลห้องเรียน
+subject-not-found: ไม่พบข้อมูลรายวิชา
+subject-assignment-not-found: ไม่พบข้อมูลการมอบหมายรายวิชา
+schedule-not-found: ไม่พบข้อมูลตารางเรียน
+question-bank-not-found: ไม่พบข้อมูลคลังข้อสอบ
+question-choice-not-found: ไม่พบข้อมูลตัวเลือกคำถาม
+assessment-set-not-found: ไม่พบข้อมูลชุดการประเมิน
 gender-name-duplicate: ชื่อเพศนี้มีอยู่แล้ว
 prefix-name-duplicate: ชื่อคำนำหน้านี้มีอยู่แล้ว
 academic-year-duplicate: ปีการศึกษานี้มีอยู่แล้ว
