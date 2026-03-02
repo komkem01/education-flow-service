@@ -16,6 +16,9 @@ schedule-not-found: ไม่พบข้อมูลตารางเรีย
 question-bank-not-found: ไม่พบข้อมูลคลังข้อสอบ
 question-choice-not-found: ไม่พบข้อมูลตัวเลือกคำถาม
 assessment-set-not-found: ไม่พบข้อมูลชุดการประเมิน
+inventory-item-not-found: ไม่พบข้อมูลรายการครุภัณฑ์
+inventory-request-not-found: ไม่พบข้อมูลคำขอครุภัณฑ์
+document-tracking-not-found: ไม่พบข้อมูลติดตามเอกสาร
 gender-name-duplicate: ชื่อเพศนี้มีอยู่แล้ว
 prefix-name-duplicate: ชื่อคำนำหน้านี้มีอยู่แล้ว
 academic-year-duplicate: ปีการศึกษานี้มีอยู่แล้ว

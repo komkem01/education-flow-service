@@ -16,6 +16,9 @@ schedule-not-found: Schedule not found
 question-bank-not-found: Question bank item not found
 question-choice-not-found: Question choice not found
 assessment-set-not-found: Assessment set not found
+inventory-item-not-found: Inventory item not found
+inventory-request-not-found: Inventory request not found
+document-tracking-not-found: Document tracking not found
 gender-name-duplicate: Gender name already exists
 prefix-name-duplicate: Prefix name already exists
 academic-year-duplicate: Academic year already exists

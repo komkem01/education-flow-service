@@ -119,6 +119,30 @@ type AssessmentSetEntity interface {
 	ListAssessmentSets(ctx context.Context, subjectAssignmentID *uuid.UUID, onlyPublished bool) ([]*ent.AssessmentSet, error)
 }
 
+type InventoryItemEntity interface {
+	CreateInventoryItem(ctx context.Context, item *ent.InventoryItem) (*ent.InventoryItem, error)
+	GetInventoryItemByID(ctx context.Context, id uuid.UUID) (*ent.InventoryItem, error)
+	UpdateInventoryItemByID(ctx context.Context, id uuid.UUID, item *ent.InventoryItem) (*ent.InventoryItem, error)
+	DeleteInventoryItemByID(ctx context.Context, id uuid.UUID) error
+	ListInventoryItems(ctx context.Context, schoolID *uuid.UUID) ([]*ent.InventoryItem, error)
+}
+
+type InventoryRequestEntity interface {
+	CreateInventoryRequest(ctx context.Context, request *ent.InventoryRequest) (*ent.InventoryRequest, error)
+	GetInventoryRequestByID(ctx context.Context, id uuid.UUID) (*ent.InventoryRequest, error)
+	UpdateInventoryRequestByID(ctx context.Context, id uuid.UUID, request *ent.InventoryRequest) (*ent.InventoryRequest, error)
+	DeleteInventoryRequestByID(ctx context.Context, id uuid.UUID) error
+	ListInventoryRequests(ctx context.Context, itemID *uuid.UUID, requesterMemberID *uuid.UUID, status *ent.InventoryRequestStatus) ([]*ent.InventoryRequest, error)
+}
+
+type DocumentTrackingEntity interface {
+	CreateDocumentTracking(ctx context.Context, document *ent.DocumentTracking) (*ent.DocumentTracking, error)
+	GetDocumentTrackingByID(ctx context.Context, id uuid.UUID) (*ent.DocumentTracking, error)
+	UpdateDocumentTrackingByID(ctx context.Context, id uuid.UUID, document *ent.DocumentTracking) (*ent.DocumentTracking, error)
+	DeleteDocumentTrackingByID(ctx context.Context, id uuid.UUID) error
+	ListDocumentTrackings(ctx context.Context, schoolID *uuid.UUID, senderMemberID *uuid.UUID, receiverMemberID *uuid.UUID, status *ent.DocumentTrackingStatus) ([]*ent.DocumentTracking, error)
+}
+
 type MemberEntity interface {
 	CreateMember(ctx context.Context, member *ent.Member) (*ent.Member, error)
 	GetMemberByID(ctx context.Context, id uuid.UUID) (*ent.Member, error)

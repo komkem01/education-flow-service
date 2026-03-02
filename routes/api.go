@@ -84,6 +84,24 @@ func api(r *gin.RouterGroup, mod *modules.Modules) {
 	r.PATCH("/assessment-sets/:id", mod.AssessmentSet.Ctl.Update)
 	r.DELETE("/assessment-sets/:id", mod.AssessmentSet.Ctl.Delete)
 
+	r.GET("/inventory-items", mod.InventoryItem.Ctl.List)
+	r.GET("/inventory-items/:id", mod.InventoryItem.Ctl.Get)
+	r.POST("/inventory-items", mod.InventoryItem.Ctl.Create)
+	r.PATCH("/inventory-items/:id", mod.InventoryItem.Ctl.Update)
+	r.DELETE("/inventory-items/:id", mod.InventoryItem.Ctl.Delete)
+
+	r.GET("/inventory-requests", mod.InventoryRequest.Ctl.List)
+	r.GET("/inventory-requests/:id", mod.InventoryRequest.Ctl.Get)
+	r.POST("/inventory-requests", mod.InventoryRequest.Ctl.Create)
+	r.PATCH("/inventory-requests/:id", mod.InventoryRequest.Ctl.Update)
+	r.DELETE("/inventory-requests/:id", mod.InventoryRequest.Ctl.Delete)
+
+	r.GET("/document-tracking", mod.DocumentTracking.Ctl.List)
+	r.GET("/document-tracking/:id", mod.DocumentTracking.Ctl.Get)
+	r.POST("/document-tracking", mod.DocumentTracking.Ctl.Create)
+	r.PATCH("/document-tracking/:id", mod.DocumentTracking.Ctl.Update)
+	r.DELETE("/document-tracking/:id", mod.DocumentTracking.Ctl.Delete)
+
 	r.GET("/members", mod.Member.Ctl.List)
 	r.GET("/members/:id", mod.Member.Ctl.Get)
 	r.POST("/members", mod.Member.Ctl.Create)

@@ -20,6 +20,9 @@ var (
 	QuestionBankNotFound      = "question-bank-not-found"
 	QuestionChoiceNotFound    = "question-choice-not-found"
 	AssessmentSetNotFound     = "assessment-set-not-found"
+	InventoryItemNotFound     = "inventory-item-not-found"
+	InventoryRequestNotFound  = "inventory-request-not-found"
+	DocumentTrackingNotFound  = "document-tracking-not-found"
 
 	GenderNameDuplicate                 = "gender-name-duplicate"
 	PrefixNameDuplicate                 = "prefix-name-duplicate"

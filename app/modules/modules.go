@@ -8,9 +8,12 @@ import (
 	"education-flow/app/modules/admins"
 	assessmentsets "education-flow/app/modules/assessment-sets"
 	"education-flow/app/modules/classrooms"
+	documenttracking "education-flow/app/modules/document-tracking"
 	"education-flow/app/modules/entities"
 	"education-flow/app/modules/example"
 	"education-flow/app/modules/genders"
+	inventoryitems "education-flow/app/modules/inventory-items"
+	inventoryrequests "education-flow/app/modules/inventory-requests"
 	"education-flow/app/modules/members"
 	parentstudents "education-flow/app/modules/parent-students"
 	"education-flow/app/modules/parents"
@@ -69,6 +72,9 @@ type Modules struct {
 	QuestionBank                 *questionbanks.Module
 	QuestionChoice               *questionchoices.Module
 	AssessmentSet                *assessmentsets.Module
+	InventoryItem                *inventoryitems.Module
+	InventoryRequest             *inventoryrequests.Module
+	DocumentTracking             *documenttracking.Module
 	Member                       *members.Module
 	Admin                        *admins.Module
 	Staff                        *staffs.Module
@@ -118,6 +124,9 @@ func modulesInit() {
 	questionBankMod := questionbanks.New(config.Conf[questionbanks.Config](confMod.Svc), entitiesMod.Svc)
 	questionChoiceMod := questionchoices.New(config.Conf[questionchoices.Config](confMod.Svc), entitiesMod.Svc)
 	assessmentSetMod := assessmentsets.New(config.Conf[assessmentsets.Config](confMod.Svc), entitiesMod.Svc)
+	inventoryItemMod := inventoryitems.New(config.Conf[inventoryitems.Config](confMod.Svc), entitiesMod.Svc)
+	inventoryRequestMod := inventoryrequests.New(config.Conf[inventoryrequests.Config](confMod.Svc), entitiesMod.Svc)
+	documentTrackingMod := documenttracking.New(config.Conf[documenttracking.Config](confMod.Svc), entitiesMod.Svc)
 	memberMod := members.New(config.Conf[members.Config](confMod.Svc), entitiesMod.Svc)
 	adminMod := admins.New(config.Conf[admins.Config](confMod.Svc), entitiesMod.Svc)
 	staffMod := staffs.New(config.Conf[staffs.Config](confMod.Svc), entitiesMod.Svc)
@@ -160,6 +169,9 @@ func modulesInit() {
 		QuestionBank:                 questionBankMod,
 		QuestionChoice:               questionChoiceMod,
 		AssessmentSet:                assessmentSetMod,
+		InventoryItem:                inventoryItemMod,
+		InventoryRequest:             inventoryRequestMod,
+		DocumentTracking:             documentTrackingMod,
 		Member:                       memberMod,
 		Admin:                        adminMod,
 		Staff:                        staffMod,
