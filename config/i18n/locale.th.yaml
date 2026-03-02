@@ -8,7 +8,17 @@ invalid-id: รหัสอ้างอิงไม่ถูกต้อง
 school-not-found: ไม่พบข้อมูลโรงเรียน
 gender-not-found: ไม่พบข้อมูลเพศ
 prefix-not-found: ไม่พบข้อมูลคำนำหน้า
+academic-year-not-found: ไม่พบข้อมูลปีการศึกษา
 gender-name-duplicate: ชื่อเพศนี้มีอยู่แล้ว
 prefix-name-duplicate: ชื่อคำนำหน้านี้มีอยู่แล้ว
+academic-year-duplicate: ปีการศึกษานี้มีอยู่แล้ว
+academic-year-invalid-date-range: วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มต้น
 member-not-found: ไม่พบข้อมูลสมาชิก
 member-email-duplicate: อีเมลนี้มีอยู่แล้ว
+teacher-not-found: ไม่พบข้อมูลครู
+teacher-code-duplicate: รหัสครูนี้มีอยู่แล้ว
+teacher-education-not-found: ไม่พบข้อมูลประวัติการศึกษาครู
+teacher-profile-request-not-found: ไม่พบคำขอแก้ไขโปรไฟล์ครู
+teacher-performance-agreement-not-found: ไม่พบข้อตกลงผลการปฏิบัติงานครู
+teacher-leave-log-not-found: ไม่พบข้อมูลการลาครู
+teacher-invalid-date-range: วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มต้น

@@ -55,10 +55,57 @@ type PrefixEntity interface {
 	ListPrefixes(ctx context.Context, onlyActive bool) ([]*ent.Prefix, error)
 }
 
+type AcademicYearEntity interface {
+	CreateAcademicYear(ctx context.Context, academicYear *ent.AcademicYear) (*ent.AcademicYear, error)
+	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (*ent.AcademicYear, error)
+	UpdateAcademicYearByID(ctx context.Context, id uuid.UUID, academicYear *ent.AcademicYear) (*ent.AcademicYear, error)
+	DeleteAcademicYearByID(ctx context.Context, id uuid.UUID) error
+	ListAcademicYears(ctx context.Context, onlyActive bool, onlyCurrent bool) ([]*ent.AcademicYear, error)
+}
+
 type MemberEntity interface {
 	CreateMember(ctx context.Context, member *ent.Member) (*ent.Member, error)
 	GetMemberByID(ctx context.Context, id uuid.UUID) (*ent.Member, error)
 	UpdateMemberByID(ctx context.Context, id uuid.UUID, member *ent.Member) (*ent.Member, error)
 	DeleteMemberByID(ctx context.Context, id uuid.UUID) error
 	ListMembers(ctx context.Context, schoolID *uuid.UUID, role *ent.MemberRole, onlyActive bool) ([]*ent.Member, error)
+}
+
+type MemberTeacherEntity interface {
+	CreateTeacher(ctx context.Context, teacher *ent.MemberTeacher) (*ent.MemberTeacher, error)
+	GetTeacherByID(ctx context.Context, id uuid.UUID) (*ent.MemberTeacher, error)
+	UpdateTeacherByID(ctx context.Context, id uuid.UUID, teacher *ent.MemberTeacher) (*ent.MemberTeacher, error)
+	DeleteTeacherByID(ctx context.Context, id uuid.UUID) error
+	ListTeachers(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberTeacher, error)
+}
+
+type TeacherEducationEntity interface {
+	CreateTeacherEducation(ctx context.Context, education *ent.TeacherEducation) (*ent.TeacherEducation, error)
+	UpdateTeacherEducationByID(ctx context.Context, id uuid.UUID, education *ent.TeacherEducation) (*ent.TeacherEducation, error)
+	DeleteTeacherEducationByID(ctx context.Context, id uuid.UUID) error
+	ListTeacherEducationsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherEducation, error)
+}
+
+type TeacherProfileRequestEntity interface {
+	CreateTeacherProfileRequest(ctx context.Context, profileRequest *ent.TeacherProfileRequest) (*ent.TeacherProfileRequest, error)
+	UpdateTeacherProfileRequestByID(ctx context.Context, id uuid.UUID, profileRequest *ent.TeacherProfileRequest) (*ent.TeacherProfileRequest, error)
+	ListTeacherProfileRequestsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherProfileRequest, error)
+}
+
+type TeacherPerformanceAgreementEntity interface {
+	CreateTeacherPerformanceAgreement(ctx context.Context, agreement *ent.TeacherPerformanceAgreement) (*ent.TeacherPerformanceAgreement, error)
+	UpdateTeacherPerformanceAgreementByID(ctx context.Context, id uuid.UUID, agreement *ent.TeacherPerformanceAgreement) (*ent.TeacherPerformanceAgreement, error)
+	ListTeacherPerformanceAgreementsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherPerformanceAgreement, error)
+}
+
+type TeacherPDALogEntity interface {
+	CreateTeacherPDALog(ctx context.Context, pdaLog *ent.TeacherPDALog) (*ent.TeacherPDALog, error)
+	DeleteTeacherPDALogByID(ctx context.Context, id uuid.UUID) error
+	ListTeacherPDALogsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherPDALog, error)
+}
+
+type TeacherLeaveLogEntity interface {
+	CreateTeacherLeaveLog(ctx context.Context, leaveLog *ent.TeacherLeaveLog) (*ent.TeacherLeaveLog, error)
+	UpdateTeacherLeaveLogByID(ctx context.Context, id uuid.UUID, leaveLog *ent.TeacherLeaveLog) (*ent.TeacherLeaveLog, error)
+	ListTeacherLeaveLogsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherLeaveLog, error)
 }

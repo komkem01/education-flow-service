@@ -8,7 +8,17 @@ invalid-id: Invalid identifier
 school-not-found: School not found
 gender-not-found: Gender not found
 prefix-not-found: Prefix not found
+academic-year-not-found: Academic year not found
 gender-name-duplicate: Gender name already exists
 prefix-name-duplicate: Prefix name already exists
+academic-year-duplicate: Academic year already exists
+academic-year-invalid-date-range: End date must be after or equal start date
 member-not-found: Member not found
 member-email-duplicate: Email already exists
+teacher-not-found: Teacher not found
+teacher-code-duplicate: Teacher code already exists
+teacher-education-not-found: Teacher education not found
+teacher-profile-request-not-found: Teacher profile request not found
+teacher-performance-agreement-not-found: Teacher performance agreement not found
+teacher-leave-log-not-found: Teacher leave log not found
+teacher-invalid-date-range: End date must be after or equal start date
