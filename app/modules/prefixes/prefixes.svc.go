@@ -26,11 +26,13 @@ type Options struct {
 }
 
 type CreatePrefixInput struct {
+	GenderID *uuid.UUID
 	Name     string
 	IsActive bool
 }
 
 type UpdatePrefixInput struct {
+	GenderID *uuid.UUID
 	Name     string
 	IsActive bool
 }
@@ -44,6 +46,7 @@ func newService(opt *Options) *Service {
 
 func (s *Service) Create(ctx context.Context, input *CreatePrefixInput) (*ent.Prefix, error) {
 	prefix := &ent.Prefix{
+		GenderID: input.GenderID,
 		Name:     strings.TrimSpace(input.Name),
 		IsActive: input.IsActive,
 	}
@@ -61,6 +64,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.Prefix, error
 
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdatePrefixInput) (*ent.Prefix, error) {
 	prefix := &ent.Prefix{
+		GenderID: input.GenderID,
 		Name:     strings.TrimSpace(input.Name),
 		IsActive: input.IsActive,
 	}

@@ -30,6 +30,7 @@ func (s *Service) UpdatePrefixByID(ctx context.Context, id uuid.UUID, prefix *en
 	updated := new(ent.Prefix)
 	if err := s.db.NewUpdate().
 		Model(updated).
+		Set("gender_id = ?", prefix.GenderID).
 		Set("name = ?", prefix.Name).
 		Set("is_active = ?", prefix.IsActive).
 		Set("updated_at = current_timestamp").

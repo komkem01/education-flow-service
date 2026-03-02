@@ -11,6 +11,7 @@ type Prefix struct {
 	bun.BaseModel `bun:"table:prefixes,alias:pfx"`
 
 	ID        uuid.UUID `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	GenderID  *uuid.UUID `bun:"gender_id,type:uuid"`
 	Name      string    `bun:"name,notnull"`
 	IsActive  bool      `bun:"is_active,notnull"`
 	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp"`

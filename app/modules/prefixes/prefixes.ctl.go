@@ -33,17 +33,20 @@ type prefixURIRequest struct {
 }
 
 type createPrefixRequest struct {
+	GenderID *string `json:"gender_id" binding:"omitempty,uuid"`
 	Name     string `json:"name" binding:"required,min=1,max=20"`
 	IsActive bool   `json:"is_active"`
 }
 
 type updatePrefixRequest struct {
+	GenderID *string `json:"gender_id" binding:"omitempty,uuid"`
 	Name     string `json:"name" binding:"required,min=1,max=20"`
 	IsActive bool   `json:"is_active"`
 }
 
 type prefixResponse struct {
 	ID       string `json:"id"`
+	GenderID *string `json:"gender_id"`
 	Name     string `json:"name"`
 	IsActive bool   `json:"is_active"`
 }
@@ -56,7 +59,14 @@ func (c *Controller) Create(ctx *gin.Context) {
 		return
 	}
 
+	genderID, err := utils.ParseUUIDPtr(req.GenderID)
+	if err != nil {
+		base.BadRequest(ctx, "invalid-id", nil)
+		return
+	}
+
 	prefix, err := c.svc.Create(ctx.Request.Context(), &CreatePrefixInput{
+		GenderID: genderID,
 		Name:     req.Name,
 		IsActive: req.IsActive,
 	})
@@ -131,7 +141,14 @@ func (c *Controller) Update(ctx *gin.Context) {
 		return
 	}
 
+	genderID, err := utils.ParseUUIDPtr(req.GenderID)
+	if err != nil {
+		base.BadRequest(ctx, "invalid-id", nil)
+		return
+	}
+
 	prefix, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdatePrefixInput{
+		GenderID: genderID,
 		Name:     req.Name,
 		IsActive: req.IsActive,
 	})
@@ -189,6 +206,7 @@ func parsePrefixID(ctx *gin.Context) (uuid.UUID, bool) {
 func toPrefixResponse(prefix *ent.Prefix) prefixResponse {
 	return prefixResponse{
 		ID:       prefix.ID.String(),
+		GenderID: utils.UUIDToStringPtr(prefix.GenderID),
 		Name:     prefix.Name,
 		IsActive: prefix.IsActive,
 	}
