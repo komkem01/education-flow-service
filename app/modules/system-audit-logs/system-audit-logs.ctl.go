@@ -3,6 +3,8 @@ package systemauditlogs
 import (
 	"database/sql"
 	"errors"
+	"sort"
+	"strconv"
 	"strings"
 
 	"education-flow/app/modules/entities/ent"
@@ -95,7 +97,21 @@ func (c *Controller) List(ctx *gin.Context) {
 	for _, item := range items {
 		responseList = append(responseList, toResponse(item))
 	}
-	base.Success(ctx, responseList)
+
+	search := strings.TrimSpace(ctx.Query("search"))
+	if search != "" {
+		responseList = filterResponses(responseList, search)
+	}
+
+	sortBy := strings.TrimSpace(ctx.DefaultQuery("sort_by", "created_at"))
+	orderBy := strings.ToLower(strings.TrimSpace(ctx.DefaultQuery("order_by", "desc")))
+	responseList = sortResponses(responseList, sortBy, orderBy)
+
+	page, size := parsePageSize(ctx)
+	total := int64(len(responseList))
+	responseList = paginateResponses(responseList, page, size)
+
+	base.Paginate(ctx, responseList, &base.ResponsePaginate{Page: int64(page), Size: int64(size), Total: total})
 }
 
 func (c *Controller) Get(ctx *gin.Context) {
@@ -118,50 +134,11 @@ func (c *Controller) Get(ctx *gin.Context) {
 }
 
 func (c *Controller) Update(ctx *gin.Context) {
-	_, log := utils.LogSpanFromGin(ctx)
-	id, ok := parseID(ctx)
-	if !ok {
-		return
-	}
-	var req updateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		base.BadRequest(ctx, ci18n.BadRequest, nil)
-		return
-	}
-	memberID, ok := parseMemberID(ctx, req.MemberID)
-	if !ok {
-		return
-	}
-
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateInput{MemberID: memberID, Action: req.Action, Module: req.Module, Description: req.Description, IPAddress: req.IPAddress, UserAgent: req.UserAgent})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			base.ValidateFailed(ctx, ci18n.SystemAuditLogNotFound, nil)
-			return
-		}
-		if errors.Is(err, ErrMemberNotFound) {
-			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
-			return
-		}
-		log.Errf("system-audit-logs.update.error: %v", err)
-		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
-		return
-	}
-	base.Success(ctx, toResponse(item))
+	base.Forbidden(ctx, ci18n.Forbidden, nil)
 }
 
 func (c *Controller) Delete(ctx *gin.Context) {
-	_, log := utils.LogSpanFromGin(ctx)
-	id, ok := parseID(ctx)
-	if !ok {
-		return
-	}
-	if err := c.svc.DeleteByID(ctx.Request.Context(), id); err != nil {
-		log.Errf("system-audit-logs.delete.error: %v", err)
-		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
-		return
-	}
-	base.Success(ctx, gin.H{"id": id.String()})
+	base.Forbidden(ctx, ci18n.Forbidden, nil)
 }
 
 func parseID(ctx *gin.Context) (uuid.UUID, bool) {
@@ -184,4 +161,107 @@ func parseMemberID(ctx *gin.Context, raw *string) (*uuid.UUID, bool) {
 
 func toResponse(item *ent.SystemAuditLog) response {
 	return response{ID: item.ID.String(), MemberID: utils.UUIDToStringPtr(item.MemberID), Action: item.Action, Module: item.Module, Description: item.Description, IPAddress: item.IPAddress, UserAgent: item.UserAgent, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout)}
+}
+
+func parsePageSize(ctx *gin.Context) (int, int) {
+	page := 1
+	size := 20
+
+	if raw := strings.TrimSpace(ctx.Query("page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if raw := strings.TrimSpace(ctx.Query("size")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			if parsed > 100 {
+				parsed = 100
+			}
+			size = parsed
+		}
+	}
+
+	return page, size
+}
+
+func paginateResponses(items []response, page int, size int) []response {
+	if len(items) == 0 {
+		return items
+	}
+
+	start := (page - 1) * size
+	if start >= len(items) {
+		return []response{}
+	}
+	end := start + size
+	if end > len(items) {
+		end = len(items)
+	}
+
+	return items[start:end]
+}
+
+func filterResponses(items []response, search string) []response {
+	needle := strings.ToLower(search)
+	filtered := make([]response, 0, len(items))
+	for _, item := range items {
+		action := ""
+		if item.Action != nil {
+			action = strings.ToLower(*item.Action)
+		}
+		module := ""
+		if item.Module != nil {
+			module = strings.ToLower(*item.Module)
+		}
+		description := ""
+		if item.Description != nil {
+			description = strings.ToLower(*item.Description)
+		}
+		if strings.Contains(action, needle) || strings.Contains(module, needle) || strings.Contains(description, needle) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func sortResponses(items []response, sortBy string, orderBy string) []response {
+	if len(items) < 2 {
+		return items
+	}
+
+	asc := orderBy == "asc"
+	sort.Slice(items, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "module":
+			a := ""
+			if items[i].Module != nil {
+				a = strings.ToLower(*items[i].Module)
+			}
+			b := ""
+			if items[j].Module != nil {
+				b = strings.ToLower(*items[j].Module)
+			}
+			less = a < b
+		case "action":
+			a := ""
+			if items[i].Action != nil {
+				a = strings.ToLower(*items[i].Action)
+			}
+			b := ""
+			if items[j].Action != nil {
+				b = strings.ToLower(*items[j].Action)
+			}
+			less = a < b
+		default:
+			less = items[i].CreatedAt < items[j].CreatedAt
+		}
+
+		if asc {
+			return less
+		}
+		return !less
+	})
+
+	return items
 }

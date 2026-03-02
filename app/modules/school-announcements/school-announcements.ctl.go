@@ -3,6 +3,9 @@ package schoolannouncements
 import (
 	"database/sql"
 	"errors"
+	"sort"
+	"strconv"
+	"strings"
 
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
@@ -71,6 +74,10 @@ func (c *Controller) Create(ctx *gin.Context) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
 			return
 		}
+		if errors.Is(err, ErrInvalidAuthorRole) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
 		log.Errf("school-announcements.create.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
@@ -103,7 +110,21 @@ func (c *Controller) List(ctx *gin.Context) {
 	for _, item := range items {
 		responseList = append(responseList, toResponse(item))
 	}
-	base.Success(ctx, responseList)
+
+	search := strings.TrimSpace(ctx.Query("search"))
+	if search != "" {
+		responseList = filterResponses(responseList, search)
+	}
+
+	sortBy := strings.TrimSpace(ctx.DefaultQuery("sort_by", "created_at"))
+	orderBy := strings.ToLower(strings.TrimSpace(ctx.DefaultQuery("order_by", "desc")))
+	responseList = sortResponses(responseList, sortBy, orderBy)
+
+	page, size := parsePageSize(ctx)
+	total := int64(len(responseList))
+	responseList = paginateResponses(responseList, page, size)
+
+	base.Paginate(ctx, responseList, &base.ResponsePaginate{Page: int64(page), Size: int64(size), Total: total})
 }
 
 func (c *Controller) Get(ctx *gin.Context) {
@@ -156,6 +177,10 @@ func (c *Controller) Update(ctx *gin.Context) {
 		}
 		if errors.Is(err, ErrAuthorMemberNotFound) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrInvalidAuthorRole) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
 			return
 		}
 		log.Errf("school-announcements.update.error: %v", err)
@@ -220,4 +245,98 @@ func memberRoleToStringPtr(role *ent.MemberRole) *string {
 	}
 	v := string(*role)
 	return &v
+}
+
+func parsePageSize(ctx *gin.Context) (int, int) {
+	page := 1
+	size := 20
+
+	if raw := strings.TrimSpace(ctx.Query("page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if raw := strings.TrimSpace(ctx.Query("size")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			if parsed > 100 {
+				parsed = 100
+			}
+			size = parsed
+		}
+	}
+
+	return page, size
+}
+
+func paginateResponses(items []response, page int, size int) []response {
+	if len(items) == 0 {
+		return items
+	}
+
+	start := (page - 1) * size
+	if start >= len(items) {
+		return []response{}
+	}
+	end := start + size
+	if end > len(items) {
+		end = len(items)
+	}
+
+	return items[start:end]
+}
+
+func filterResponses(items []response, search string) []response {
+	needle := strings.ToLower(search)
+	filtered := make([]response, 0, len(items))
+
+	for _, item := range items {
+		title := ""
+		if item.Title != nil {
+			title = strings.ToLower(*item.Title)
+		}
+		content := ""
+		if item.Content != nil {
+			content = strings.ToLower(*item.Content)
+		}
+		if strings.Contains(title, needle) || strings.Contains(content, needle) {
+			filtered = append(filtered, item)
+		}
+	}
+
+	return filtered
+}
+
+func sortResponses(items []response, sortBy string, orderBy string) []response {
+	if len(items) < 2 {
+		return items
+	}
+
+	asc := orderBy == "asc"
+
+	sort.Slice(items, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "updated_at":
+			less = items[i].UpdatedAt < items[j].UpdatedAt
+		case "title":
+			a := ""
+			if items[i].Title != nil {
+				a = strings.ToLower(*items[i].Title)
+			}
+			b := ""
+			if items[j].Title != nil {
+				b = strings.ToLower(*items[j].Title)
+			}
+			less = a < b
+		default:
+			less = items[i].CreatedAt < items[j].CreatedAt
+		}
+
+		if asc {
+			return less
+		}
+		return !less
+	})
+
+	return items
 }

@@ -111,14 +111,10 @@ func api(r *gin.RouterGroup, mod *modules.Modules) {
 	r.GET("/system-audit-logs", mod.SystemAuditLog.Ctl.List)
 	r.GET("/system-audit-logs/:id", mod.SystemAuditLog.Ctl.Get)
 	r.POST("/system-audit-logs", mod.SystemAuditLog.Ctl.Create)
-	r.PATCH("/system-audit-logs/:id", mod.SystemAuditLog.Ctl.Update)
-	r.DELETE("/system-audit-logs/:id", mod.SystemAuditLog.Ctl.Delete)
 
 	r.GET("/data-change-logs", mod.DataChangeLog.Ctl.List)
 	r.GET("/data-change-logs/:id", mod.DataChangeLog.Ctl.Get)
 	r.POST("/data-change-logs", mod.DataChangeLog.Ctl.Create)
-	r.PATCH("/data-change-logs/:id", mod.DataChangeLog.Ctl.Update)
-	r.DELETE("/data-change-logs/:id", mod.DataChangeLog.Ctl.Delete)
 
 	r.GET("/storages", mod.Storage.Ctl.List)
 	r.GET("/storages/:id", mod.Storage.Ctl.Get)

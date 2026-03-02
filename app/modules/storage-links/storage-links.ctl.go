@@ -3,6 +3,9 @@ package storagelinks
 import (
 	"database/sql"
 	"errors"
+	"sort"
+	"strconv"
+	"strings"
 
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
@@ -94,7 +97,21 @@ func (c *Controller) List(ctx *gin.Context) {
 	for _, item := range items {
 		responseList = append(responseList, toResponse(item))
 	}
-	base.Success(ctx, responseList)
+
+	search := strings.TrimSpace(ctx.Query("search"))
+	if search != "" {
+		responseList = filterResponses(responseList, search)
+	}
+
+	sortBy := strings.TrimSpace(ctx.DefaultQuery("sort_by", "sort_order"))
+	orderBy := strings.ToLower(strings.TrimSpace(ctx.DefaultQuery("order_by", "asc")))
+	responseList = sortResponses(responseList, sortBy, orderBy)
+
+	page, size := parsePageSize(ctx)
+	total := int64(len(responseList))
+	responseList = paginateResponses(responseList, page, size)
+
+	base.Paginate(ctx, responseList, &base.ResponsePaginate{Page: int64(page), Size: int64(size), Total: total})
 }
 
 func (c *Controller) Get(ctx *gin.Context) {
@@ -196,4 +213,80 @@ func trimmedQueryPtr(raw string) *string {
 	}
 	value := raw
 	return &value
+}
+
+func parsePageSize(ctx *gin.Context) (int, int) {
+	page := 1
+	size := 20
+
+	if raw := strings.TrimSpace(ctx.Query("page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if raw := strings.TrimSpace(ctx.Query("size")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			if parsed > 100 {
+				parsed = 100
+			}
+			size = parsed
+		}
+	}
+
+	return page, size
+}
+
+func paginateResponses(items []response, page int, size int) []response {
+	if len(items) == 0 {
+		return items
+	}
+
+	start := (page - 1) * size
+	if start >= len(items) {
+		return []response{}
+	}
+	end := start + size
+	if end > len(items) {
+		end = len(items)
+	}
+
+	return items[start:end]
+}
+
+func filterResponses(items []response, search string) []response {
+	needle := strings.ToLower(search)
+	filtered := make([]response, 0, len(items))
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(item.EntityType), needle) ||
+			(item.FieldName != nil && strings.Contains(strings.ToLower(*item.FieldName), needle)) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func sortResponses(items []response, sortBy string, orderBy string) []response {
+	if len(items) < 2 {
+		return items
+	}
+
+	asc := orderBy == "asc"
+	sort.Slice(items, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "created_at":
+			less = items[i].CreatedAt < items[j].CreatedAt
+		case "entity_type":
+			less = strings.ToLower(items[i].EntityType) < strings.ToLower(items[j].EntityType)
+		default:
+			less = items[i].SortOrder < items[j].SortOrder
+		}
+
+		if asc {
+			return less
+		}
+		return !less
+	})
+
+	return items
 }

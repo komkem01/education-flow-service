@@ -17,12 +17,15 @@ import (
 var (
 	ErrSchoolNotFound       = errors.New("school not found")
 	ErrAuthorMemberNotFound = errors.New("author member not found")
+	ErrInvalidAuthorRole    = errors.New("invalid author role")
 )
 
 type serviceDB interface {
 	entitiesinf.SchoolAnnouncementEntity
 	entitiesinf.SchoolEntity
 	entitiesinf.MemberEntity
+	entitiesinf.MemberAdminEntity
+	entitiesinf.MemberStaffEntity
 }
 
 type Service struct {
@@ -99,6 +102,18 @@ func (s *Service) validateDependencies(ctx context.Context, schoolID uuid.UUID, 
 			return ErrAuthorMemberNotFound
 		}
 		return err
+	}
+
+	isAdmin, err := s.db.MemberHasAdminRole(ctx, authorMemberID)
+	if err != nil {
+		return err
+	}
+	isStaff, err := s.db.MemberHasStaffRole(ctx, authorMemberID)
+	if err != nil {
+		return err
+	}
+	if !isAdmin && !isStaff {
+		return ErrInvalidAuthorRole
 	}
 	return nil
 }

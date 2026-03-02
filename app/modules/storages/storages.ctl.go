@@ -3,6 +3,9 @@ package storages
 import (
 	"database/sql"
 	"errors"
+	"sort"
+	"strconv"
+	"strings"
 
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
@@ -150,7 +153,21 @@ func (c *Controller) List(ctx *gin.Context) {
 	for _, item := range items {
 		responseList = append(responseList, toResponse(item))
 	}
-	base.Success(ctx, responseList)
+
+	search := strings.TrimSpace(ctx.Query("search"))
+	if search != "" {
+		responseList = filterResponses(responseList, search)
+	}
+
+	sortBy := strings.TrimSpace(ctx.DefaultQuery("sort_by", "created_at"))
+	orderBy := strings.ToLower(strings.TrimSpace(ctx.DefaultQuery("order_by", "desc")))
+	responseList = sortResponses(responseList, sortBy, orderBy)
+
+	page, size := parsePageSize(ctx)
+	total := int64(len(responseList))
+	responseList = paginateResponses(responseList, page, size)
+
+	base.Paginate(ctx, responseList, &base.ResponsePaginate{Page: int64(page), Size: int64(size), Total: total})
 }
 
 func (c *Controller) Get(ctx *gin.Context) {
@@ -261,4 +278,83 @@ func parseCreateUpdateFields(ctx *gin.Context, schoolIDRaw string, uploadedByRaw
 
 func toResponse(item *ent.Storage) response {
 	return response{ID: item.ID.String(), SchoolID: item.SchoolID.String(), BucketName: item.BucketName, ObjectKey: item.ObjectKey, OriginalName: item.OriginalName, Extension: item.Extension, MIMEType: item.MIMEType, SizeBytes: item.SizeBytes, ChecksumSHA256: item.ChecksumSHA256, ETag: item.ETag, Visibility: string(item.Visibility), Status: string(item.Status), VirusScanStatus: string(item.VirusScanStatus), UploadedByMemberID: utils.UUIDToStringPtr(item.UploadedByMemberID), VersionNo: item.VersionNo, ReplacedByStorageID: utils.UUIDToStringPtr(item.ReplacedByStorageID), Metadata: item.Metadata, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout), UpdatedAt: item.UpdatedAt.UTC().Format(dateTimeLayout)}
+}
+
+func parsePageSize(ctx *gin.Context) (int, int) {
+	page := 1
+	size := 20
+
+	if raw := strings.TrimSpace(ctx.Query("page")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if raw := strings.TrimSpace(ctx.Query("size")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			if parsed > 100 {
+				parsed = 100
+			}
+			size = parsed
+		}
+	}
+
+	return page, size
+}
+
+func paginateResponses(items []response, page int, size int) []response {
+	if len(items) == 0 {
+		return items
+	}
+
+	start := (page - 1) * size
+	if start >= len(items) {
+		return []response{}
+	}
+	end := start + size
+	if end > len(items) {
+		end = len(items)
+	}
+
+	return items[start:end]
+}
+
+func filterResponses(items []response, search string) []response {
+	needle := strings.ToLower(search)
+	filtered := make([]response, 0, len(items))
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(item.BucketName), needle) ||
+			strings.Contains(strings.ToLower(item.ObjectKey), needle) ||
+			(item.OriginalName != nil && strings.Contains(strings.ToLower(*item.OriginalName), needle)) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func sortResponses(items []response, sortBy string, orderBy string) []response {
+	if len(items) < 2 {
+		return items
+	}
+
+	asc := orderBy == "asc"
+	sort.Slice(items, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "updated_at":
+			less = items[i].UpdatedAt < items[j].UpdatedAt
+		case "size_bytes":
+			less = items[i].SizeBytes < items[j].SizeBytes
+		case "version_no":
+			less = items[i].VersionNo < items[j].VersionNo
+		default:
+			less = items[i].CreatedAt < items[j].CreatedAt
+		}
+
+		if asc {
+			return less
+		}
+		return !less
+	})
+
+	return items
 }
