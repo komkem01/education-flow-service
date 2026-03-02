@@ -24,11 +24,42 @@ type StorageEntity interface {
 	CreateStorage(ctx context.Context, storage *ent.Storage) (*ent.Storage, error)
 	GetStorageByID(ctx context.Context, id uuid.UUID) (*ent.Storage, error)
 	GetStorageByObjectKey(ctx context.Context, bucketName, objectKey string) (*ent.Storage, error)
+	UpdateStorageByID(ctx context.Context, id uuid.UUID, storage *ent.Storage) (*ent.Storage, error)
 	UpdateStorageStatusByID(ctx context.Context, id uuid.UUID, status ent.StorageStatus) (*ent.Storage, error)
+	ListStorages(ctx context.Context, schoolID *uuid.UUID, uploadedByMemberID *uuid.UUID, status *ent.StorageStatus, visibility *ent.StorageVisibility) ([]*ent.Storage, error)
 	SoftDeleteStorageByID(ctx context.Context, id uuid.UUID) error
+	DeleteStorageByID(ctx context.Context, id uuid.UUID) error
 	CreateStorageLink(ctx context.Context, link *ent.StorageLink) (*ent.StorageLink, error)
+	GetStorageLinkByID(ctx context.Context, id uuid.UUID) (*ent.StorageLink, error)
+	UpdateStorageLinkByID(ctx context.Context, id uuid.UUID, link *ent.StorageLink) (*ent.StorageLink, error)
+	DeleteStorageLinkByID(ctx context.Context, id uuid.UUID) error
+	ListStorageLinks(ctx context.Context, storageID *uuid.UUID, entityType *string, entityID *uuid.UUID) ([]*ent.StorageLink, error)
 	ListStorageLinksByEntity(ctx context.Context, entityType string, entityID uuid.UUID) ([]*ent.StorageLink, error)
 	DeleteStorageLinksByStorageID(ctx context.Context, storageID uuid.UUID) error
+}
+
+type SchoolAnnouncementEntity interface {
+	CreateSchoolAnnouncement(ctx context.Context, announcement *ent.SchoolAnnouncement) (*ent.SchoolAnnouncement, error)
+	GetSchoolAnnouncementByID(ctx context.Context, id uuid.UUID) (*ent.SchoolAnnouncement, error)
+	UpdateSchoolAnnouncementByID(ctx context.Context, id uuid.UUID, announcement *ent.SchoolAnnouncement) (*ent.SchoolAnnouncement, error)
+	DeleteSchoolAnnouncementByID(ctx context.Context, id uuid.UUID) error
+	ListSchoolAnnouncements(ctx context.Context, schoolID *uuid.UUID, targetRole *ent.MemberRole, onlyPinned bool) ([]*ent.SchoolAnnouncement, error)
+}
+
+type SystemAuditLogEntity interface {
+	CreateSystemAuditLog(ctx context.Context, auditLog *ent.SystemAuditLog) (*ent.SystemAuditLog, error)
+	GetSystemAuditLogByID(ctx context.Context, id uuid.UUID) (*ent.SystemAuditLog, error)
+	UpdateSystemAuditLogByID(ctx context.Context, id uuid.UUID, auditLog *ent.SystemAuditLog) (*ent.SystemAuditLog, error)
+	DeleteSystemAuditLogByID(ctx context.Context, id uuid.UUID) error
+	ListSystemAuditLogs(ctx context.Context, memberID *uuid.UUID, module *string) ([]*ent.SystemAuditLog, error)
+}
+
+type DataChangeLogEntity interface {
+	CreateDataChangeLog(ctx context.Context, changeLog *ent.DataChangeLog) (*ent.DataChangeLog, error)
+	GetDataChangeLogByID(ctx context.Context, id uuid.UUID) (*ent.DataChangeLog, error)
+	UpdateDataChangeLogByID(ctx context.Context, id uuid.UUID, changeLog *ent.DataChangeLog) (*ent.DataChangeLog, error)
+	DeleteDataChangeLogByID(ctx context.Context, id uuid.UUID) error
+	ListDataChangeLogs(ctx context.Context, auditLogID *uuid.UUID, tableName *string, recordID *uuid.UUID) ([]*ent.DataChangeLog, error)
 }
 
 type SchoolEntity interface {

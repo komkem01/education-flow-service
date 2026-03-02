@@ -102,6 +102,36 @@ func api(r *gin.RouterGroup, mod *modules.Modules) {
 	r.PATCH("/document-tracking/:id", mod.DocumentTracking.Ctl.Update)
 	r.DELETE("/document-tracking/:id", mod.DocumentTracking.Ctl.Delete)
 
+	r.GET("/school-announcements", mod.SchoolAnnouncement.Ctl.List)
+	r.GET("/school-announcements/:id", mod.SchoolAnnouncement.Ctl.Get)
+	r.POST("/school-announcements", mod.SchoolAnnouncement.Ctl.Create)
+	r.PATCH("/school-announcements/:id", mod.SchoolAnnouncement.Ctl.Update)
+	r.DELETE("/school-announcements/:id", mod.SchoolAnnouncement.Ctl.Delete)
+
+	r.GET("/system-audit-logs", mod.SystemAuditLog.Ctl.List)
+	r.GET("/system-audit-logs/:id", mod.SystemAuditLog.Ctl.Get)
+	r.POST("/system-audit-logs", mod.SystemAuditLog.Ctl.Create)
+	r.PATCH("/system-audit-logs/:id", mod.SystemAuditLog.Ctl.Update)
+	r.DELETE("/system-audit-logs/:id", mod.SystemAuditLog.Ctl.Delete)
+
+	r.GET("/data-change-logs", mod.DataChangeLog.Ctl.List)
+	r.GET("/data-change-logs/:id", mod.DataChangeLog.Ctl.Get)
+	r.POST("/data-change-logs", mod.DataChangeLog.Ctl.Create)
+	r.PATCH("/data-change-logs/:id", mod.DataChangeLog.Ctl.Update)
+	r.DELETE("/data-change-logs/:id", mod.DataChangeLog.Ctl.Delete)
+
+	r.GET("/storages", mod.Storage.Ctl.List)
+	r.GET("/storages/:id", mod.Storage.Ctl.Get)
+	r.POST("/storages", mod.Storage.Ctl.Create)
+	r.PATCH("/storages/:id", mod.Storage.Ctl.Update)
+	r.DELETE("/storages/:id", mod.Storage.Ctl.Delete)
+
+	r.GET("/storage-links", mod.StorageLink.Ctl.List)
+	r.GET("/storage-links/:id", mod.StorageLink.Ctl.Get)
+	r.POST("/storage-links", mod.StorageLink.Ctl.Create)
+	r.PATCH("/storage-links/:id", mod.StorageLink.Ctl.Update)
+	r.DELETE("/storage-links/:id", mod.StorageLink.Ctl.Delete)
+
 	r.GET("/members", mod.Member.Ctl.List)
 	r.GET("/members/:id", mod.Member.Ctl.Get)
 	r.POST("/members", mod.Member.Ctl.Create)

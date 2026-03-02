@@ -19,6 +19,11 @@ assessment-set-not-found: Assessment set not found
 inventory-item-not-found: Inventory item not found
 inventory-request-not-found: Inventory request not found
 document-tracking-not-found: Document tracking not found
+school-announcement-not-found: School announcement not found
+system-audit-log-not-found: System audit log not found
+data-change-log-not-found: Data change log not found
+storage-not-found: Storage not found
+storage-link-not-found: Storage link not found
 gender-name-duplicate: Gender name already exists
 prefix-name-duplicate: Prefix name already exists
 academic-year-duplicate: Academic year already exists

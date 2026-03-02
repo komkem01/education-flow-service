@@ -8,6 +8,7 @@ import (
 	"education-flow/app/modules/admins"
 	assessmentsets "education-flow/app/modules/assessment-sets"
 	"education-flow/app/modules/classrooms"
+	datachangelogs "education-flow/app/modules/data-change-logs"
 	documenttracking "education-flow/app/modules/document-tracking"
 	"education-flow/app/modules/entities"
 	"education-flow/app/modules/example"
@@ -22,10 +23,13 @@ import (
 	questionbanks "education-flow/app/modules/question-banks"
 	questionchoices "education-flow/app/modules/question-choices"
 	"education-flow/app/modules/schedules"
+	schoolannouncements "education-flow/app/modules/school-announcements"
 	"education-flow/app/modules/schools"
 	"education-flow/app/modules/sentry"
 	"education-flow/app/modules/specs"
 	"education-flow/app/modules/staffs"
+	storagelinks "education-flow/app/modules/storage-links"
+	"education-flow/app/modules/storages"
 	studentassessmentsubmissions "education-flow/app/modules/student-assessment-submissions"
 	studentattendancelogs "education-flow/app/modules/student-attendance-logs"
 	studentenrollments "education-flow/app/modules/student-enrollments"
@@ -36,6 +40,7 @@ import (
 	"education-flow/app/modules/students"
 	subjectassignments "education-flow/app/modules/subject-assignments"
 	"education-flow/app/modules/subjects"
+	systemauditlogs "education-flow/app/modules/system-audit-logs"
 	teachereducations "education-flow/app/modules/teacher-educations"
 	teacherleavelogs "education-flow/app/modules/teacher-leave-logs"
 	teacherpdalogs "education-flow/app/modules/teacher-pda-logs"
@@ -75,6 +80,11 @@ type Modules struct {
 	InventoryItem                *inventoryitems.Module
 	InventoryRequest             *inventoryrequests.Module
 	DocumentTracking             *documenttracking.Module
+	SchoolAnnouncement           *schoolannouncements.Module
+	SystemAuditLog               *systemauditlogs.Module
+	DataChangeLog                *datachangelogs.Module
+	Storage                      *storages.Module
+	StorageLink                  *storagelinks.Module
 	Member                       *members.Module
 	Admin                        *admins.Module
 	Staff                        *staffs.Module
@@ -127,6 +137,11 @@ func modulesInit() {
 	inventoryItemMod := inventoryitems.New(config.Conf[inventoryitems.Config](confMod.Svc), entitiesMod.Svc)
 	inventoryRequestMod := inventoryrequests.New(config.Conf[inventoryrequests.Config](confMod.Svc), entitiesMod.Svc)
 	documentTrackingMod := documenttracking.New(config.Conf[documenttracking.Config](confMod.Svc), entitiesMod.Svc)
+	schoolAnnouncementMod := schoolannouncements.New(config.Conf[schoolannouncements.Config](confMod.Svc), entitiesMod.Svc)
+	systemAuditLogMod := systemauditlogs.New(config.Conf[systemauditlogs.Config](confMod.Svc), entitiesMod.Svc)
+	dataChangeLogMod := datachangelogs.New(config.Conf[datachangelogs.Config](confMod.Svc), entitiesMod.Svc)
+	storageMod := storages.New(config.Conf[storages.Config](confMod.Svc), entitiesMod.Svc)
+	storageLinkMod := storagelinks.New(config.Conf[storagelinks.Config](confMod.Svc), entitiesMod.Svc)
 	memberMod := members.New(config.Conf[members.Config](confMod.Svc), entitiesMod.Svc)
 	adminMod := admins.New(config.Conf[admins.Config](confMod.Svc), entitiesMod.Svc)
 	staffMod := staffs.New(config.Conf[staffs.Config](confMod.Svc), entitiesMod.Svc)
@@ -172,6 +187,11 @@ func modulesInit() {
 		InventoryItem:                inventoryItemMod,
 		InventoryRequest:             inventoryRequestMod,
 		DocumentTracking:             documentTrackingMod,
+		SchoolAnnouncement:           schoolAnnouncementMod,
+		SystemAuditLog:               systemAuditLogMod,
+		DataChangeLog:                dataChangeLogMod,
+		Storage:                      storageMod,
+		StorageLink:                  storageLinkMod,
 		Member:                       memberMod,
 		Admin:                        adminMod,
 		Staff:                        staffMod,

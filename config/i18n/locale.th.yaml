@@ -19,6 +19,11 @@ assessment-set-not-found: ไม่พบข้อมูลชุดการป
 inventory-item-not-found: ไม่พบข้อมูลรายการครุภัณฑ์
 inventory-request-not-found: ไม่พบข้อมูลคำขอครุภัณฑ์
 document-tracking-not-found: ไม่พบข้อมูลติดตามเอกสาร
+school-announcement-not-found: ไม่พบข้อมูลประกาศของโรงเรียน
+system-audit-log-not-found: ไม่พบข้อมูลบันทึกการตรวจสอบระบบ
+data-change-log-not-found: ไม่พบข้อมูลบันทึกการเปลี่ยนแปลงข้อมูล
+storage-not-found: ไม่พบข้อมูลไฟล์จัดเก็บ
+storage-link-not-found: ไม่พบข้อมูลการเชื่อมโยงไฟล์จัดเก็บ
 gender-name-duplicate: ชื่อเพศนี้มีอยู่แล้ว
 prefix-name-duplicate: ชื่อคำนำหน้านี้มีอยู่แล้ว
 academic-year-duplicate: ปีการศึกษานี้มีอยู่แล้ว
