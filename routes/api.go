@@ -48,6 +48,29 @@ func api(r *gin.RouterGroup, mod *modules.Modules) {
 	r.PATCH("/members/:id", mod.Member.Ctl.Update)
 	r.DELETE("/members/:id", mod.Member.Ctl.Delete)
 
+	r.GET("/staffs", mod.Staff.Ctl.List)
+	r.GET("/staffs/:id", mod.Staff.Ctl.Get)
+	r.POST("/staffs", mod.Staff.Ctl.Create)
+	r.PATCH("/staffs/:id", mod.Staff.Ctl.Update)
+	r.DELETE("/staffs/:id", mod.Staff.Ctl.Delete)
+
+	r.GET("/admins", mod.Admin.Ctl.List)
+	r.GET("/admins/:id", mod.Admin.Ctl.Get)
+	r.POST("/admins", mod.Admin.Ctl.Create)
+	r.PATCH("/admins/:id", mod.Admin.Ctl.Update)
+	r.DELETE("/admins/:id", mod.Admin.Ctl.Delete)
+
+	r.GET("/parents", mod.Parent.Ctl.List)
+	r.GET("/parents/:id", mod.Parent.Ctl.Get)
+	r.POST("/parents", mod.Parent.Ctl.Create)
+	r.PATCH("/parents/:id", mod.Parent.Ctl.Update)
+	r.DELETE("/parents/:id", mod.Parent.Ctl.Delete)
+
+	r.GET("/parents/:id/students", mod.ParentStudents.Ctl.List)
+	r.POST("/parents/:id/students", mod.ParentStudents.Ctl.Create)
+	r.PATCH("/parents/:id/students/:child_id", mod.ParentStudents.Ctl.Update)
+	r.DELETE("/parents/:id/students/:child_id", mod.ParentStudents.Ctl.Delete)
+
 	r.GET("/teachers", mod.Teacher.Ctl.List)
 	r.GET("/teachers/:id", mod.Teacher.Ctl.Get)
 	r.POST("/teachers", mod.Teacher.Ctl.Create)

@@ -87,6 +87,43 @@ type MemberStudentEntity interface {
 	ListStudents(ctx context.Context, memberID *uuid.UUID, advisorTeacherID *uuid.UUID, currentClassroomID *uuid.UUID, onlyActive bool) ([]*ent.MemberStudent, error)
 }
 
+type MemberStaffEntity interface {
+	CreateStaff(ctx context.Context, staff *ent.MemberStaff) (*ent.MemberStaff, error)
+	GetStaffByID(ctx context.Context, id uuid.UUID) (*ent.MemberStaff, error)
+	UpdateStaffByID(ctx context.Context, id uuid.UUID, staff *ent.MemberStaff) (*ent.MemberStaff, error)
+	DeleteStaffByID(ctx context.Context, id uuid.UUID) error
+	ListStaffs(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberStaff, error)
+	MemberHasStaffRole(ctx context.Context, memberID uuid.UUID) (bool, error)
+}
+
+type MemberAdminEntity interface {
+	CreateAdmin(ctx context.Context, admin *ent.MemberAdmin) (*ent.MemberAdmin, error)
+	GetAdminByID(ctx context.Context, id uuid.UUID) (*ent.MemberAdmin, error)
+	UpdateAdminByID(ctx context.Context, id uuid.UUID, admin *ent.MemberAdmin) (*ent.MemberAdmin, error)
+	DeleteAdminByID(ctx context.Context, id uuid.UUID) error
+	ListAdmins(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberAdmin, error)
+	MemberHasAdminRole(ctx context.Context, memberID uuid.UUID) (bool, error)
+}
+
+type MemberParentEntity interface {
+	CreateParent(ctx context.Context, parent *ent.MemberParent) (*ent.MemberParent, error)
+	GetParentByID(ctx context.Context, id uuid.UUID) (*ent.MemberParent, error)
+	UpdateParentByID(ctx context.Context, id uuid.UUID, parent *ent.MemberParent) (*ent.MemberParent, error)
+	DeleteParentByID(ctx context.Context, id uuid.UUID) error
+	ListParents(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberParent, error)
+	MemberHasParentRole(ctx context.Context, memberID uuid.UUID) (bool, error)
+}
+
+type MemberParentStudentEntity interface {
+	CreateParentStudent(ctx context.Context, parentStudent *ent.MemberParentStudent) (*ent.MemberParentStudent, error)
+	UpdateParentStudentByID(ctx context.Context, id uuid.UUID, parentStudent *ent.MemberParentStudent) (*ent.MemberParentStudent, error)
+	DeleteParentStudentByID(ctx context.Context, id uuid.UUID) error
+	ListParentStudentsByParentID(ctx context.Context, parentID uuid.UUID) ([]*ent.MemberParentStudent, error)
+	ParentStudentBelongsToParent(ctx context.Context, id uuid.UUID, parentID uuid.UUID) (bool, error)
+	ParentExistsByID(ctx context.Context, parentID uuid.UUID) (bool, error)
+	StudentExistsByID(ctx context.Context, studentID uuid.UUID) (bool, error)
+}
+
 type StudentEnrollmentEntity interface {
 	CreateStudentEnrollment(ctx context.Context, enrollment *ent.StudentEnrollment) (*ent.StudentEnrollment, error)
 	UpdateStudentEnrollmentByID(ctx context.Context, id uuid.UUID, enrollment *ent.StudentEnrollment) (*ent.StudentEnrollment, error)

@@ -5,15 +5,19 @@ import (
 	"sync"
 
 	academicyears "education-flow/app/modules/academic-years"
+	"education-flow/app/modules/admins"
 	"education-flow/app/modules/entities"
 	"education-flow/app/modules/example"
 	"education-flow/app/modules/genders"
 	"education-flow/app/modules/members"
+	parentstudents "education-flow/app/modules/parent-students"
+	"education-flow/app/modules/parents"
 	paymenttransactions "education-flow/app/modules/payment-transactions"
 	"education-flow/app/modules/prefixes"
 	"education-flow/app/modules/schools"
 	"education-flow/app/modules/sentry"
 	"education-flow/app/modules/specs"
+	"education-flow/app/modules/staffs"
 	studentassessmentsubmissions "education-flow/app/modules/student-assessment-submissions"
 	studentattendancelogs "education-flow/app/modules/student-attendance-logs"
 	studentenrollments "education-flow/app/modules/student-enrollments"
@@ -52,6 +56,10 @@ type Modules struct {
 	Gender                       *genders.Module
 	Prefix                       *prefixes.Module
 	Member                       *members.Module
+	Admin                        *admins.Module
+	Staff                        *staffs.Module
+	Parent                       *parents.Module
+	ParentStudents               *parentstudents.Module
 	Teacher                      *teachers.Module
 	Student                      *students.Module
 	StudentEnrollments           *studentenrollments.Module
@@ -90,6 +98,10 @@ func modulesInit() {
 	genderMod := genders.New(config.Conf[genders.Config](confMod.Svc), entitiesMod.Svc)
 	prefixMod := prefixes.New(config.Conf[prefixes.Config](confMod.Svc), entitiesMod.Svc)
 	memberMod := members.New(config.Conf[members.Config](confMod.Svc), entitiesMod.Svc)
+	adminMod := admins.New(config.Conf[admins.Config](confMod.Svc), entitiesMod.Svc)
+	staffMod := staffs.New(config.Conf[staffs.Config](confMod.Svc), entitiesMod.Svc)
+	parentMod := parents.New(config.Conf[parents.Config](confMod.Svc), entitiesMod.Svc)
+	parentStudentsMod := parentstudents.New(config.Conf[parentstudents.Config](confMod.Svc), entitiesMod.Svc)
 	teacherMod := teachers.New(config.Conf[teachers.Config](confMod.Svc), entitiesMod.Svc)
 	studentMod := students.New(config.Conf[students.Config](confMod.Svc), entitiesMod.Svc)
 	studentEnrollmentsMod := studentenrollments.New(config.Conf[studentenrollments.Config](confMod.Svc), entitiesMod.Svc)
@@ -121,6 +133,10 @@ func modulesInit() {
 		Gender:                       genderMod,
 		Prefix:                       prefixMod,
 		Member:                       memberMod,
+		Admin:                        adminMod,
+		Staff:                        staffMod,
+		Parent:                       parentMod,
+		ParentStudents:               parentStudentsMod,
 		Teacher:                      teacherMod,
 		Student:                      studentMod,
 		StudentEnrollments:           studentEnrollmentsMod,
