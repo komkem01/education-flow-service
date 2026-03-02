@@ -2,6 +2,7 @@ package teachereducations
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 
 	"education-flow/app/modules/entities/ent"
@@ -62,7 +63,15 @@ func (s *Service) ListByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*
 	return s.db.ListTeacherEducationsByTeacherID(ctx, teacherID)
 }
 
-func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateInput) (*ent.TeacherEducation, error) {
+func (s *Service) UpdateByID(ctx context.Context, teacherID uuid.UUID, id uuid.UUID, input *UpdateInput) (*ent.TeacherEducation, error) {
+	belongs, err := s.db.TeacherEducationBelongsToTeacher(ctx, id, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	if !belongs {
+		return nil, sql.ErrNoRows
+	}
+
 	education := &ent.TeacherEducation{
 		DegreeLevel:    trimStringPtr(input.DegreeLevel),
 		DegreeName:     trimStringPtr(input.DegreeName),
@@ -73,7 +82,15 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateInp
 	return s.db.UpdateTeacherEducationByID(ctx, id, education)
 }
 
-func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
+func (s *Service) DeleteByID(ctx context.Context, teacherID uuid.UUID, id uuid.UUID) error {
+	belongs, err := s.db.TeacherEducationBelongsToTeacher(ctx, id, teacherID)
+	if err != nil {
+		return err
+	}
+	if !belongs {
+		return sql.ErrNoRows
+	}
+
 	return s.db.DeleteTeacherEducationByID(ctx, id)
 }
 

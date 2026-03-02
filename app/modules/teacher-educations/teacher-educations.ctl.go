@@ -94,7 +94,7 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
-	_, childID, ok := parseIDs(ctx, true)
+	teacherID, childID, ok := parseIDs(ctx, true)
 	if !ok {
 		return
 	}
@@ -105,7 +105,7 @@ func (c *Controller) Update(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), childID, &UpdateInput{DegreeLevel: req.DegreeLevel, DegreeName: req.DegreeName, Major: req.Major, University: req.University, GraduationYear: req.GraduationYear})
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), teacherID, childID, &UpdateInput{DegreeLevel: req.DegreeLevel, DegreeName: req.DegreeName, Major: req.Major, University: req.University, GraduationYear: req.GraduationYear})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.TeacherEducationNotFound, nil)
@@ -121,12 +121,16 @@ func (c *Controller) Update(ctx *gin.Context) {
 
 func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
-	_, childID, ok := parseIDs(ctx, true)
+	teacherID, childID, ok := parseIDs(ctx, true)
 	if !ok {
 		return
 	}
 
-	if err := c.svc.DeleteByID(ctx.Request.Context(), childID); err != nil {
+	if err := c.svc.DeleteByID(ctx.Request.Context(), teacherID, childID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.TeacherEducationNotFound, nil)
+			return
+		}
 		log.Errf("teacher-educations.delete.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return

@@ -79,33 +79,117 @@ type MemberTeacherEntity interface {
 	ListTeachers(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberTeacher, error)
 }
 
+type MemberStudentEntity interface {
+	CreateStudent(ctx context.Context, student *ent.MemberStudent) (*ent.MemberStudent, error)
+	GetStudentByID(ctx context.Context, id uuid.UUID) (*ent.MemberStudent, error)
+	UpdateStudentByID(ctx context.Context, id uuid.UUID, student *ent.MemberStudent) (*ent.MemberStudent, error)
+	DeleteStudentByID(ctx context.Context, id uuid.UUID) error
+	ListStudents(ctx context.Context, memberID *uuid.UUID, advisorTeacherID *uuid.UUID, currentClassroomID *uuid.UUID, onlyActive bool) ([]*ent.MemberStudent, error)
+}
+
+type StudentEnrollmentEntity interface {
+	CreateStudentEnrollment(ctx context.Context, enrollment *ent.StudentEnrollment) (*ent.StudentEnrollment, error)
+	UpdateStudentEnrollmentByID(ctx context.Context, id uuid.UUID, enrollment *ent.StudentEnrollment) (*ent.StudentEnrollment, error)
+	DeleteStudentEnrollmentByID(ctx context.Context, id uuid.UUID) error
+	ListStudentEnrollmentsByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentEnrollment, error)
+	StudentEnrollmentBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
+}
+
+type StudentAssessmentSubmissionEntity interface {
+	CreateStudentAssessmentSubmission(ctx context.Context, submission *ent.StudentAssessmentSubmission) (*ent.StudentAssessmentSubmission, error)
+	UpdateStudentAssessmentSubmissionByID(ctx context.Context, id uuid.UUID, submission *ent.StudentAssessmentSubmission) (*ent.StudentAssessmentSubmission, error)
+	DeleteStudentAssessmentSubmissionByID(ctx context.Context, id uuid.UUID) error
+	ListStudentAssessmentSubmissionsByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentAssessmentSubmission, error)
+	StudentAssessmentSubmissionBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
+}
+
+type StudentInvoiceEntity interface {
+	CreateStudentInvoice(ctx context.Context, invoice *ent.StudentInvoice) (*ent.StudentInvoice, error)
+	UpdateStudentInvoiceByID(ctx context.Context, id uuid.UUID, invoice *ent.StudentInvoice) (*ent.StudentInvoice, error)
+	DeleteStudentInvoiceByID(ctx context.Context, id uuid.UUID) error
+	ListStudentInvoicesByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentInvoice, error)
+	StudentInvoiceBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
+	FeeCategoryBelongsToStudent(ctx context.Context, feeCategoryID uuid.UUID, studentID uuid.UUID) (bool, error)
+}
+
+type StudentAttendanceLogEntity interface {
+	CreateStudentAttendanceLog(ctx context.Context, attendanceLog *ent.StudentAttendanceLog) (*ent.StudentAttendanceLog, error)
+	UpdateStudentAttendanceLogByID(ctx context.Context, id uuid.UUID, attendanceLog *ent.StudentAttendanceLog) (*ent.StudentAttendanceLog, error)
+	DeleteStudentAttendanceLogByID(ctx context.Context, id uuid.UUID) error
+	ListStudentAttendanceLogsByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentAttendanceLog, error)
+	StudentAttendanceLogBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
+	EnrollmentBelongsToStudent(ctx context.Context, enrollmentID uuid.UUID, studentID uuid.UUID) (bool, error)
+}
+
+type PaymentTransactionEntity interface {
+	CreatePaymentTransaction(ctx context.Context, transaction *ent.PaymentTransaction) (*ent.PaymentTransaction, error)
+	UpdatePaymentTransactionByID(ctx context.Context, id uuid.UUID, transaction *ent.PaymentTransaction) (*ent.PaymentTransaction, error)
+	DeletePaymentTransactionByID(ctx context.Context, id uuid.UUID) error
+	ListPaymentTransactionsByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.PaymentTransaction, error)
+	PaymentTransactionBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
+	InvoiceBelongsToStudent(ctx context.Context, invoiceID uuid.UUID, studentID uuid.UUID) (bool, error)
+}
+
+type FeeCategoryEntity interface {
+	CreateFeeCategory(ctx context.Context, feeCategory *ent.FeeCategory) (*ent.FeeCategory, error)
+	UpdateFeeCategoryByID(ctx context.Context, id uuid.UUID, feeCategory *ent.FeeCategory) (*ent.FeeCategory, error)
+	DeleteFeeCategoryByID(ctx context.Context, id uuid.UUID) error
+	ListFeeCategoriesByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.FeeCategory, error)
+	ResolveSchoolIDByStudentID(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error)
+	FeeCategoryBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
+}
+
+type GradeItemEntity interface {
+	CreateGradeItem(ctx context.Context, gradeItem *ent.GradeItem) (*ent.GradeItem, error)
+	UpdateGradeItemByID(ctx context.Context, id uuid.UUID, gradeItem *ent.GradeItem) (*ent.GradeItem, error)
+	DeleteGradeItemByID(ctx context.Context, id uuid.UUID) error
+	ListGradeItemsByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.GradeItem, error)
+	GradeItemBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
+	SubjectAssignmentBelongsToStudent(ctx context.Context, subjectAssignmentID uuid.UUID, studentID uuid.UUID) (bool, error)
+}
+
+type GradeRecordEntity interface {
+	CreateGradeRecord(ctx context.Context, gradeRecord *ent.GradeRecord) (*ent.GradeRecord, error)
+	UpdateGradeRecordByID(ctx context.Context, id uuid.UUID, gradeRecord *ent.GradeRecord) (*ent.GradeRecord, error)
+	DeleteGradeRecordByID(ctx context.Context, id uuid.UUID) error
+	ListGradeRecordsByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.GradeRecord, error)
+	GradeRecordBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
+	EnrollmentBelongsToStudent(ctx context.Context, enrollmentID uuid.UUID, studentID uuid.UUID) (bool, error)
+	GradeItemBelongsToStudent(ctx context.Context, gradeItemID uuid.UUID, studentID uuid.UUID) (bool, error)
+}
+
 type TeacherEducationEntity interface {
 	CreateTeacherEducation(ctx context.Context, education *ent.TeacherEducation) (*ent.TeacherEducation, error)
 	UpdateTeacherEducationByID(ctx context.Context, id uuid.UUID, education *ent.TeacherEducation) (*ent.TeacherEducation, error)
 	DeleteTeacherEducationByID(ctx context.Context, id uuid.UUID) error
 	ListTeacherEducationsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherEducation, error)
+	TeacherEducationBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error)
 }
 
 type TeacherProfileRequestEntity interface {
 	CreateTeacherProfileRequest(ctx context.Context, profileRequest *ent.TeacherProfileRequest) (*ent.TeacherProfileRequest, error)
 	UpdateTeacherProfileRequestByID(ctx context.Context, id uuid.UUID, profileRequest *ent.TeacherProfileRequest) (*ent.TeacherProfileRequest, error)
 	ListTeacherProfileRequestsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherProfileRequest, error)
+	TeacherProfileRequestBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error)
 }
 
 type TeacherPerformanceAgreementEntity interface {
 	CreateTeacherPerformanceAgreement(ctx context.Context, agreement *ent.TeacherPerformanceAgreement) (*ent.TeacherPerformanceAgreement, error)
 	UpdateTeacherPerformanceAgreementByID(ctx context.Context, id uuid.UUID, agreement *ent.TeacherPerformanceAgreement) (*ent.TeacherPerformanceAgreement, error)
 	ListTeacherPerformanceAgreementsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherPerformanceAgreement, error)
+	TeacherPerformanceAgreementBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error)
 }
 
 type TeacherPDALogEntity interface {
 	CreateTeacherPDALog(ctx context.Context, pdaLog *ent.TeacherPDALog) (*ent.TeacherPDALog, error)
 	DeleteTeacherPDALogByID(ctx context.Context, id uuid.UUID) error
 	ListTeacherPDALogsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherPDALog, error)
+	TeacherPDALogBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error)
 }
 
 type TeacherLeaveLogEntity interface {
 	CreateTeacherLeaveLog(ctx context.Context, leaveLog *ent.TeacherLeaveLog) (*ent.TeacherLeaveLog, error)
 	UpdateTeacherLeaveLogByID(ctx context.Context, id uuid.UUID, leaveLog *ent.TeacherLeaveLog) (*ent.TeacherLeaveLog, error)
 	ListTeacherLeaveLogsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherLeaveLog, error)
+	TeacherLeaveLogBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error)
 }

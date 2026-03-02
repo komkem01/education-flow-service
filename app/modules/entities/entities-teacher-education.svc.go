@@ -50,3 +50,11 @@ func (s *Service) ListTeacherEducationsByTeacherID(ctx context.Context, teacherI
 
 	return educations, nil
 }
+
+func (s *Service) TeacherEducationBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error) {
+	return s.db.NewSelect().
+		Model((*ent.TeacherEducation)(nil)).
+		Where("id = ?", id).
+		Where("teacher_id = ?", teacherID).
+		Exists(ctx)
+}

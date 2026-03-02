@@ -2,6 +2,7 @@ package teacherleavelogs
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"time"
 
@@ -55,7 +56,15 @@ func (s *Service) ListByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*
 	return s.db.ListTeacherLeaveLogsByTeacherID(ctx, teacherID)
 }
 
-func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateInput) (*ent.TeacherLeaveLog, error) {
+func (s *Service) UpdateByID(ctx context.Context, teacherID uuid.UUID, id uuid.UUID, input *UpdateInput) (*ent.TeacherLeaveLog, error) {
+	belongs, err := s.db.TeacherLeaveLogBelongsToTeacher(ctx, id, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	if !belongs {
+		return nil, sql.ErrNoRows
+	}
+
 	item := &ent.TeacherLeaveLog{Type: input.Type, StartDate: input.StartDate, EndDate: input.EndDate, Reason: trimStringPtr(input.Reason), Status: input.Status, ApprovedByStaffID: input.ApprovedByStaffID}
 	return s.db.UpdateTeacherLeaveLogByID(ctx, id, item)
 }

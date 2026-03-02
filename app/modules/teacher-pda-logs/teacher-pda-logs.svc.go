@@ -2,6 +2,7 @@ package teacherpdalogs
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 
 	"education-flow/app/modules/entities/ent"
@@ -42,7 +43,15 @@ func (s *Service) ListByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*
 	return s.db.ListTeacherPDALogsByTeacherID(ctx, teacherID)
 }
 
-func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
+func (s *Service) DeleteByID(ctx context.Context, teacherID uuid.UUID, id uuid.UUID) error {
+	belongs, err := s.db.TeacherPDALogBelongsToTeacher(ctx, id, teacherID)
+	if err != nil {
+		return err
+	}
+	if !belongs {
+		return sql.ErrNoRows
+	}
+
 	return s.db.DeleteTeacherPDALogByID(ctx, id)
 }
 

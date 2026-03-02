@@ -2,6 +2,7 @@ package teacherperformanceagreements
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 
 	"education-flow/app/modules/entities/ent"
@@ -50,7 +51,15 @@ func (s *Service) ListByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*
 	return s.db.ListTeacherPerformanceAgreementsByTeacherID(ctx, teacherID)
 }
 
-func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateInput) (*ent.TeacherPerformanceAgreement, error) {
+func (s *Service) UpdateByID(ctx context.Context, teacherID uuid.UUID, id uuid.UUID, input *UpdateInput) (*ent.TeacherPerformanceAgreement, error) {
+	belongs, err := s.db.TeacherPerformanceAgreementBelongsToTeacher(ctx, id, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	if !belongs {
+		return nil, sql.ErrNoRows
+	}
+
 	item := &ent.TeacherPerformanceAgreement{AcademicYearID: input.AcademicYearID, AgreementDetail: trimStringPtr(input.AgreementDetail), ExpectedOutcomes: trimStringPtr(input.ExpectedOutcomes), Status: input.Status}
 	return s.db.UpdateTeacherPerformanceAgreementByID(ctx, id, item)
 }

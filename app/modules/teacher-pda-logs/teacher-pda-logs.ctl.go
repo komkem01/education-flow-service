@@ -1,6 +1,9 @@
 package teacherpdalogs
 
 import (
+	"database/sql"
+	"errors"
+
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -83,11 +86,15 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
-	_, childID, ok := parseIDs(ctx, true)
+	teacherID, childID, ok := parseIDs(ctx, true)
 	if !ok {
 		return
 	}
-	if err := c.svc.DeleteByID(ctx.Request.Context(), childID); err != nil {
+	if err := c.svc.DeleteByID(ctx.Request.Context(), teacherID, childID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.TeacherNotFound, nil)
+			return
+		}
 		log.Errf("teacher-pda-logs.delete.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return

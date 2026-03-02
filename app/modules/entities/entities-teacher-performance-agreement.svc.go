@@ -45,3 +45,11 @@ func (s *Service) ListTeacherPerformanceAgreementsByTeacherID(ctx context.Contex
 
 	return agreements, nil
 }
+
+func (s *Service) TeacherPerformanceAgreementBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error) {
+	return s.db.NewSelect().
+		Model((*ent.TeacherPerformanceAgreement)(nil)).
+		Where("id = ?", id).
+		Where("teacher_id = ?", teacherID).
+		Exists(ctx)
+}

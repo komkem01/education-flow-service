@@ -22,3 +22,13 @@ teacher-profile-request-not-found: Teacher profile request not found
 teacher-performance-agreement-not-found: Teacher performance agreement not found
 teacher-leave-log-not-found: Teacher leave log not found
 teacher-invalid-date-range: End date must be after or equal start date
+student-not-found: Student not found
+student-code-duplicate: Student code already exists
+student-enrollment-not-found: Student enrollment not found
+student-assessment-submission-not-found: Student assessment submission not found
+student-invoice-not-found: Student invoice not found
+student-attendance-log-not-found: Student attendance log not found
+payment-transaction-not-found: Payment transaction not found
+fee-category-not-found: Fee category not found
+grade-item-not-found: Grade item not found
+grade-record-not-found: Grade record not found

@@ -26,6 +26,16 @@ var (
 	TeacherPerformanceAgreementNotFound = "teacher-performance-agreement-not-found"
 	TeacherLeaveLogNotFound             = "teacher-leave-log-not-found"
 	TeacherInvalidDateRange             = "teacher-invalid-date-range"
+	StudentNotFound                     = "student-not-found"
+	StudentCodeDuplicate                = "student-code-duplicate"
+	StudentEnrollmentNotFound           = "student-enrollment-not-found"
+	StudentAssessmentSubmissionNotFound = "student-assessment-submission-not-found"
+	StudentInvoiceNotFound              = "student-invoice-not-found"
+	StudentAttendanceLogNotFound        = "student-attendance-log-not-found"
+	PaymentTransactionNotFound          = "payment-transaction-not-found"
+	FeeCategoryNotFound                 = "fee-category-not-found"
+	GradeItemNotFound                   = "grade-item-not-found"
+	GradeRecordNotFound                 = "grade-record-not-found"
 
 	ExampleMessageOK = "example-message-ok"
 )

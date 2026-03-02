@@ -22,3 +22,13 @@ teacher-profile-request-not-found: ไม่พบคำขอแก้ไขโ
 teacher-performance-agreement-not-found: ไม่พบข้อตกลงผลการปฏิบัติงานครู
 teacher-leave-log-not-found: ไม่พบข้อมูลการลาครู
 teacher-invalid-date-range: วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มต้น
+student-not-found: ไม่พบข้อมูลนักเรียน
+student-code-duplicate: รหัสนักเรียนนี้มีอยู่แล้ว
+student-enrollment-not-found: ไม่พบข้อมูลการลงทะเบียนเรียน
+student-assessment-submission-not-found: ไม่พบข้อมูลการส่งแบบประเมินของนักเรียน
+student-invoice-not-found: ไม่พบข้อมูลใบแจ้งหนี้นักเรียน
+student-attendance-log-not-found: ไม่พบข้อมูลการเข้าเรียนของนักเรียน
+payment-transaction-not-found: ไม่พบข้อมูลรายการชำระเงิน
+fee-category-not-found: ไม่พบข้อมูลหมวดหมู่ค่าธรรมเนียม
+grade-item-not-found: ไม่พบข้อมูลรายการเกรด
+grade-record-not-found: ไม่พบข้อมูลผลการประเมิน

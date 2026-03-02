@@ -32,3 +32,11 @@ func (s *Service) ListTeacherPDALogsByTeacherID(ctx context.Context, teacherID u
 
 	return logs, nil
 }
+
+func (s *Service) TeacherPDALogBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error) {
+	return s.db.NewSelect().
+		Model((*ent.TeacherPDALog)(nil)).
+		Where("id = ?", id).
+		Where("teacher_id = ?", teacherID).
+		Exists(ctx)
+}

@@ -104,7 +104,7 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
-	_, childID, ok := parseIDs(ctx, true)
+	teacherID, childID, ok := parseIDs(ctx, true)
 	if !ok {
 		return
 	}
@@ -123,7 +123,7 @@ func (c *Controller) Update(ctx *gin.Context) {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
 		return
 	}
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), childID, &UpdateInput{RequestedData: req.RequestedData, Reason: req.Reason, Status: ent.ToTeacherProfileRequestStatus(req.Status), Comment: req.Comment, ProcessedByStaffID: processedByStaffID, ProcessedAt: processedAt})
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), teacherID, childID, &UpdateInput{RequestedData: req.RequestedData, Reason: req.Reason, Status: ent.ToTeacherProfileRequestStatus(req.Status), Comment: req.Comment, ProcessedByStaffID: processedByStaffID, ProcessedAt: processedAt})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.TeacherProfileRequestNotFound, nil)

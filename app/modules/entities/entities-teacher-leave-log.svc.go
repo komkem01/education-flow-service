@@ -46,3 +46,11 @@ func (s *Service) ListTeacherLeaveLogsByTeacherID(ctx context.Context, teacherID
 
 	return logs, nil
 }
+
+func (s *Service) TeacherLeaveLogBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error) {
+	return s.db.NewSelect().
+		Model((*ent.TeacherLeaveLog)(nil)).
+		Where("id = ?", id).
+		Where("teacher_id = ?", teacherID).
+		Exists(ctx)
+}

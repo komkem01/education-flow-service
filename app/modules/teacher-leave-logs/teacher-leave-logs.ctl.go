@@ -122,7 +122,7 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
-	_, childID, ok := parseIDs(ctx, true)
+	teacherID, childID, ok := parseIDs(ctx, true)
 	if !ok {
 		return
 	}
@@ -140,7 +140,7 @@ func (c *Controller) Update(ctx *gin.Context) {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
 		return
 	}
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), childID, &UpdateInput{Type: ent.ToTeacherLeaveType(req.Type), StartDate: startDate, EndDate: endDate, Reason: req.Reason, Status: ent.ToTeacherLeaveStatus(req.Status), ApprovedByStaffID: approvedByStaffID})
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), teacherID, childID, &UpdateInput{Type: ent.ToTeacherLeaveType(req.Type), StartDate: startDate, EndDate: endDate, Reason: req.Reason, Status: ent.ToTeacherLeaveStatus(req.Status), ApprovedByStaffID: approvedByStaffID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.TeacherLeaveLogNotFound, nil)

@@ -2,6 +2,7 @@ package teacherprofilerequests
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"time"
 
@@ -53,7 +54,15 @@ func (s *Service) ListByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*
 	return s.db.ListTeacherProfileRequestsByTeacherID(ctx, teacherID)
 }
 
-func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateInput) (*ent.TeacherProfileRequest, error) {
+func (s *Service) UpdateByID(ctx context.Context, teacherID uuid.UUID, id uuid.UUID, input *UpdateInput) (*ent.TeacherProfileRequest, error) {
+	belongs, err := s.db.TeacherProfileRequestBelongsToTeacher(ctx, id, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	if !belongs {
+		return nil, sql.ErrNoRows
+	}
+
 	item := &ent.TeacherProfileRequest{RequestedData: input.RequestedData, Reason: trimStringPtr(input.Reason), Status: input.Status, Comment: trimStringPtr(input.Comment), ProcessedByStaffID: input.ProcessedByStaffID, ProcessedAt: input.ProcessedAt}
 	return s.db.UpdateTeacherProfileRequestByID(ctx, id, item)
 }

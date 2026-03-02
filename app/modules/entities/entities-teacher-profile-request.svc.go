@@ -46,3 +46,11 @@ func (s *Service) ListTeacherProfileRequestsByTeacherID(ctx context.Context, tea
 
 	return requests, nil
 }
+
+func (s *Service) TeacherProfileRequestBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error) {
+	return s.db.NewSelect().
+		Model((*ent.TeacherProfileRequest)(nil)).
+		Where("id = ?", id).
+		Where("teacher_id = ?", teacherID).
+		Exists(ctx)
+}
