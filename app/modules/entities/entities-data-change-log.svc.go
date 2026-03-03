@@ -36,6 +36,11 @@ func (s *Service) UpdateDataChangeLogByID(ctx context.Context, id uuid.UUID, cha
 		Set("audit_log_id = ?", changeLog.AuditLogID).
 		Set("table_name = ?", changeLog.TableName).
 		Set("record_id = ?", changeLog.RecordID).
+		Set("operation = ?", changeLog.Operation).
+		Set("changed_fields = ?", changeLog.ChangedFields).
+		Set("changed_by_member_id = ?", changeLog.ChangedByMemberID).
+		Set("source = ?", changeLog.Source).
+		Set("reason = ?", changeLog.Reason).
 		Set("old_values = ?", changeLog.OldValues).
 		Set("new_values = ?", changeLog.NewValues).
 		Where("id = ?", id).

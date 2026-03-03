@@ -35,12 +35,29 @@ type Options struct {
 }
 
 type CreateInput struct {
-	MemberID    *uuid.UUID
-	Action      *string
-	Module      *string
-	Description *string
-	IPAddress   *string
-	UserAgent   *string
+	MemberID        *uuid.UUID
+	Action          *string
+	Module          *string
+	Description     *string
+	IPAddress       *string
+	UserAgent       *string
+	ActorType       *string
+	ActorIdentifier *string
+	TraceID         *string
+	SpanID          *string
+	RequestID       *string
+	HTTPMethod      *string
+	HTTPPath        *string
+	RoutePath       *string
+	QueryParams     map[string]any
+	RequestBody     map[string]any
+	ResponseStatus  *int
+	ResponseBody    map[string]any
+	ErrorMessage    *string
+	Outcome         *string
+	ResourceType    *string
+	ResourceID      *uuid.UUID
+	DurationMS      *int64
 }
 
 type UpdateInput = CreateInput
@@ -57,7 +74,31 @@ func (s *Service) Create(ctx context.Context, input *CreateInput) (*ent.SystemAu
 		return nil, err
 	}
 
-	item := &ent.SystemAuditLog{MemberID: input.MemberID, Action: trimStringPtr(input.Action), Module: trimStringPtr(input.Module), Description: trimStringPtr(input.Description), IPAddress: trimStringPtr(input.IPAddress), UserAgent: trimStringPtr(input.UserAgent)}
+	item := &ent.SystemAuditLog{
+		MemberID:        input.MemberID,
+		Action:          trimStringPtr(input.Action),
+		Module:          trimStringPtr(input.Module),
+		Description:     trimStringPtr(input.Description),
+		IPAddress:       trimStringPtr(input.IPAddress),
+		UserAgent:       trimStringPtr(input.UserAgent),
+		ActorType:       trimStringPtr(input.ActorType),
+		ActorIdentifier: trimStringPtr(input.ActorIdentifier),
+		TraceID:         trimStringPtr(input.TraceID),
+		SpanID:          trimStringPtr(input.SpanID),
+		RequestID:       trimStringPtr(input.RequestID),
+		HTTPMethod:      trimStringPtr(input.HTTPMethod),
+		HTTPPath:        trimStringPtr(input.HTTPPath),
+		RoutePath:       trimStringPtr(input.RoutePath),
+		QueryParams:     input.QueryParams,
+		RequestBody:     input.RequestBody,
+		ResponseStatus:  input.ResponseStatus,
+		ResponseBody:    input.ResponseBody,
+		ErrorMessage:    trimStringPtr(input.ErrorMessage),
+		Outcome:         trimStringPtr(input.Outcome),
+		ResourceType:    trimStringPtr(input.ResourceType),
+		ResourceID:      input.ResourceID,
+		DurationMS:      input.DurationMS,
+	}
 	return s.db.CreateSystemAuditLog(ctx, item)
 }
 
@@ -74,7 +115,31 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateInp
 		return nil, err
 	}
 
-	item := &ent.SystemAuditLog{MemberID: input.MemberID, Action: trimStringPtr(input.Action), Module: trimStringPtr(input.Module), Description: trimStringPtr(input.Description), IPAddress: trimStringPtr(input.IPAddress), UserAgent: trimStringPtr(input.UserAgent)}
+	item := &ent.SystemAuditLog{
+		MemberID:        input.MemberID,
+		Action:          trimStringPtr(input.Action),
+		Module:          trimStringPtr(input.Module),
+		Description:     trimStringPtr(input.Description),
+		IPAddress:       trimStringPtr(input.IPAddress),
+		UserAgent:       trimStringPtr(input.UserAgent),
+		ActorType:       trimStringPtr(input.ActorType),
+		ActorIdentifier: trimStringPtr(input.ActorIdentifier),
+		TraceID:         trimStringPtr(input.TraceID),
+		SpanID:          trimStringPtr(input.SpanID),
+		RequestID:       trimStringPtr(input.RequestID),
+		HTTPMethod:      trimStringPtr(input.HTTPMethod),
+		HTTPPath:        trimStringPtr(input.HTTPPath),
+		RoutePath:       trimStringPtr(input.RoutePath),
+		QueryParams:     input.QueryParams,
+		RequestBody:     input.RequestBody,
+		ResponseStatus:  input.ResponseStatus,
+		ResponseBody:    input.ResponseBody,
+		ErrorMessage:    trimStringPtr(input.ErrorMessage),
+		Outcome:         trimStringPtr(input.Outcome),
+		ResourceType:    trimStringPtr(input.ResourceType),
+		ResourceID:      input.ResourceID,
+		DurationMS:      input.DurationMS,
+	}
 	return s.db.UpdateSystemAuditLogByID(ctx, id, item)
 }
 

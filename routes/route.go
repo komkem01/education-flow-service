@@ -15,6 +15,7 @@ func Router(app *gin.Engine, mod *modules.Modules) {
 	app.GET("/healthz", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, nil)
 	})
+	app.GET("/healthz/audit", auditHealthHandler())
 
 	app.Use(otelgin.Middleware(mod.Conf.Svc.Config().AppName),
 		// Middleware add trace id to response header
@@ -37,6 +38,8 @@ func Router(app *gin.Engine, mod *modules.Modules) {
 		AllowWebSockets:        true,
 		AllowFiles:             false,
 	}))
+
+	app.Use(auditLogMiddleware(mod))
 
 	api(app.Group("/api/v1"), mod)
 	apiMasterData(app.Group("/api/v1"), mod)

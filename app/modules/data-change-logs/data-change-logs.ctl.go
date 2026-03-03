@@ -29,23 +29,33 @@ func newController(trace trace.Tracer, svc *Service) *Controller {
 }
 
 type createRequest struct {
-	AuditLogID string         `json:"audit_log_id" binding:"required,uuid"`
-	TableName  *string        `json:"table_name" binding:"omitempty,max=255"`
-	RecordID   *string        `json:"record_id" binding:"omitempty,uuid"`
-	OldValues  map[string]any `json:"old_values"`
-	NewValues  map[string]any `json:"new_values"`
+	AuditLogID        string         `json:"audit_log_id" binding:"required,uuid"`
+	TableName         *string        `json:"table_name" binding:"omitempty,max=255"`
+	RecordID          *string        `json:"record_id" binding:"omitempty,uuid"`
+	Operation         *string        `json:"operation" binding:"omitempty,max=20"`
+	ChangedFields     []string       `json:"changed_fields"`
+	ChangedByMemberID *string        `json:"changed_by_member_id" binding:"omitempty,uuid"`
+	Source            *string        `json:"source" binding:"omitempty,max=100"`
+	Reason            *string        `json:"reason"`
+	OldValues         map[string]any `json:"old_values"`
+	NewValues         map[string]any `json:"new_values"`
 }
 
 type updateRequest = createRequest
 
 type response struct {
-	ID         string         `json:"id"`
-	AuditLogID string         `json:"audit_log_id"`
-	TableName  *string        `json:"table_name"`
-	RecordID   *string        `json:"record_id"`
-	OldValues  map[string]any `json:"old_values"`
-	NewValues  map[string]any `json:"new_values"`
-	CreatedAt  string         `json:"created_at"`
+	ID                string         `json:"id"`
+	AuditLogID        string         `json:"audit_log_id"`
+	TableName         *string        `json:"table_name"`
+	RecordID          *string        `json:"record_id"`
+	Operation         *string        `json:"operation"`
+	ChangedFields     []string       `json:"changed_fields"`
+	ChangedByMemberID *string        `json:"changed_by_member_id"`
+	Source            *string        `json:"source"`
+	Reason            *string        `json:"reason"`
+	OldValues         map[string]any `json:"old_values"`
+	NewValues         map[string]any `json:"new_values"`
+	CreatedAt         string         `json:"created_at"`
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -55,12 +65,12 @@ func (c *Controller) Create(ctx *gin.Context) {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
 		return
 	}
-	auditLogID, recordID, ok := parseCreateUpdateFields(ctx, req.AuditLogID, req.RecordID)
+	auditLogID, recordID, changedByMemberID, ok := parseCreateUpdateFields(ctx, req.AuditLogID, req.RecordID, req.ChangedByMemberID)
 	if !ok {
 		return
 	}
 
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{AuditLogID: auditLogID, TableName: req.TableName, RecordID: recordID, OldValues: req.OldValues, NewValues: req.NewValues})
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{AuditLogID: auditLogID, TableName: req.TableName, RecordID: recordID, Operation: req.Operation, ChangedFields: req.ChangedFields, ChangedByMemberID: changedByMemberID, Source: req.Source, Reason: req.Reason, OldValues: req.OldValues, NewValues: req.NewValues})
 	if err != nil {
 		if errors.Is(err, ErrAuditLogNotFound) {
 			base.ValidateFailed(ctx, ci18n.SystemAuditLogNotFound, nil)
@@ -150,22 +160,27 @@ func parseID(ctx *gin.Context) (uuid.UUID, bool) {
 	return id, true
 }
 
-func parseCreateUpdateFields(ctx *gin.Context, auditLogIDRaw string, recordIDRaw *string) (uuid.UUID, *uuid.UUID, bool) {
+func parseCreateUpdateFields(ctx *gin.Context, auditLogIDRaw string, recordIDRaw *string, changedByMemberIDRaw *string) (uuid.UUID, *uuid.UUID, *uuid.UUID, bool) {
 	auditLogID, err := uuid.Parse(auditLogIDRaw)
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
-		return uuid.Nil, nil, false
+		return uuid.Nil, nil, nil, false
 	}
 	recordID, err := utils.ParseUUIDPtr(recordIDRaw)
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
-		return uuid.Nil, nil, false
+		return uuid.Nil, nil, nil, false
 	}
-	return auditLogID, recordID, true
+	changedByMemberID, err := utils.ParseUUIDPtr(changedByMemberIDRaw)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return uuid.Nil, nil, nil, false
+	}
+	return auditLogID, recordID, changedByMemberID, true
 }
 
 func toResponse(item *ent.DataChangeLog) response {
-	return response{ID: item.ID.String(), AuditLogID: item.AuditLogID.String(), TableName: item.TableName, RecordID: utils.UUIDToStringPtr(item.RecordID), OldValues: item.OldValues, NewValues: item.NewValues, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout)}
+	return response{ID: item.ID.String(), AuditLogID: item.AuditLogID.String(), TableName: item.TableName, RecordID: utils.UUIDToStringPtr(item.RecordID), Operation: item.Operation, ChangedFields: item.ChangedFields, ChangedByMemberID: utils.UUIDToStringPtr(item.ChangedByMemberID), Source: item.Source, Reason: item.Reason, OldValues: item.OldValues, NewValues: item.NewValues, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout)}
 }
 
 func trimmedQueryPtr(raw string) *string {

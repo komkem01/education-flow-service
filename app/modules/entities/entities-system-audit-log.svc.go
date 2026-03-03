@@ -39,6 +39,23 @@ func (s *Service) UpdateSystemAuditLogByID(ctx context.Context, id uuid.UUID, au
 		Set("description = ?", auditLog.Description).
 		Set("ip_address = ?", auditLog.IPAddress).
 		Set("user_agent = ?", auditLog.UserAgent).
+		Set("actor_type = ?", auditLog.ActorType).
+		Set("actor_identifier = ?", auditLog.ActorIdentifier).
+		Set("trace_id = ?", auditLog.TraceID).
+		Set("span_id = ?", auditLog.SpanID).
+		Set("request_id = ?", auditLog.RequestID).
+		Set("http_method = ?", auditLog.HTTPMethod).
+		Set("http_path = ?", auditLog.HTTPPath).
+		Set("route_path = ?", auditLog.RoutePath).
+		Set("query_params = ?", auditLog.QueryParams).
+		Set("request_body = ?", auditLog.RequestBody).
+		Set("response_status = ?", auditLog.ResponseStatus).
+		Set("response_body = ?", auditLog.ResponseBody).
+		Set("error_message = ?", auditLog.ErrorMessage).
+		Set("outcome = ?", auditLog.Outcome).
+		Set("resource_type = ?", auditLog.ResourceType).
+		Set("resource_id = ?", auditLog.ResourceID).
+		Set("duration_ms = ?", auditLog.DurationMS).
 		Where("id = ?", id).
 		Returning("*").
 		Scan(ctx); err != nil {

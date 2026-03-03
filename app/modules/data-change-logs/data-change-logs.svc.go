@@ -35,11 +35,16 @@ type Options struct {
 }
 
 type CreateInput struct {
-	AuditLogID uuid.UUID
-	TableName  *string
-	RecordID   *uuid.UUID
-	OldValues  map[string]any
-	NewValues  map[string]any
+	AuditLogID        uuid.UUID
+	TableName         *string
+	RecordID          *uuid.UUID
+	Operation         *string
+	ChangedFields     []string
+	ChangedByMemberID *uuid.UUID
+	Source            *string
+	Reason            *string
+	OldValues         map[string]any
+	NewValues         map[string]any
 }
 
 type UpdateInput = CreateInput
@@ -56,7 +61,18 @@ func (s *Service) Create(ctx context.Context, input *CreateInput) (*ent.DataChan
 	if err := s.validateAuditLog(ctx, input.AuditLogID); err != nil {
 		return nil, err
 	}
-	item := &ent.DataChangeLog{AuditLogID: input.AuditLogID, TableName: trimStringPtr(input.TableName), RecordID: input.RecordID, OldValues: input.OldValues, NewValues: input.NewValues}
+	item := &ent.DataChangeLog{
+		AuditLogID:        input.AuditLogID,
+		TableName:         trimStringPtr(input.TableName),
+		RecordID:          input.RecordID,
+		Operation:         trimStringPtr(input.Operation),
+		ChangedFields:     input.ChangedFields,
+		ChangedByMemberID: input.ChangedByMemberID,
+		Source:            trimStringPtr(input.Source),
+		Reason:            trimStringPtr(input.Reason),
+		OldValues:         input.OldValues,
+		NewValues:         input.NewValues,
+	}
 	return s.db.CreateDataChangeLog(ctx, item)
 }
 
@@ -72,7 +88,18 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateInp
 	if err := s.validateAuditLog(ctx, input.AuditLogID); err != nil {
 		return nil, err
 	}
-	item := &ent.DataChangeLog{AuditLogID: input.AuditLogID, TableName: trimStringPtr(input.TableName), RecordID: input.RecordID, OldValues: input.OldValues, NewValues: input.NewValues}
+	item := &ent.DataChangeLog{
+		AuditLogID:        input.AuditLogID,
+		TableName:         trimStringPtr(input.TableName),
+		RecordID:          input.RecordID,
+		Operation:         trimStringPtr(input.Operation),
+		ChangedFields:     input.ChangedFields,
+		ChangedByMemberID: input.ChangedByMemberID,
+		Source:            trimStringPtr(input.Source),
+		Reason:            trimStringPtr(input.Reason),
+		OldValues:         input.OldValues,
+		NewValues:         input.NewValues,
+	}
 	return s.db.UpdateDataChangeLogByID(ctx, id, item)
 }
 

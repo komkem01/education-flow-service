@@ -31,7 +31,12 @@ func Conf[C any](app App) *Config[C] {
 		}
 	}
 	if !exists {
-		panic(fmt.Sprintf("Config not found for %q", reflect.TypeOf(c)))
+		configType := reflect.TypeOf(c).Elem()
+		if configType.Kind() == reflect.Struct && configType.NumField() == 0 {
+			c = new(C)
+		} else {
+			panic(fmt.Sprintf("Config not found for %q", reflect.TypeOf(c)))
+		}
 	}
 	return &Config[C]{
 		App: app,

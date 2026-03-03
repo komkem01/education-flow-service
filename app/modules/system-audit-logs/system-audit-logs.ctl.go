@@ -29,25 +29,59 @@ func newController(trace trace.Tracer, svc *Service) *Controller {
 }
 
 type createRequest struct {
-	MemberID    *string `json:"member_id" binding:"omitempty,uuid"`
-	Action      *string `json:"action" binding:"omitempty,max=100"`
-	Module      *string `json:"module" binding:"omitempty,max=100"`
-	Description *string `json:"description"`
-	IPAddress   *string `json:"ip_address" binding:"omitempty,max=100"`
-	UserAgent   *string `json:"user_agent"`
+	MemberID        *string        `json:"member_id" binding:"omitempty,uuid"`
+	Action          *string        `json:"action" binding:"omitempty,max=100"`
+	Module          *string        `json:"module" binding:"omitempty,max=100"`
+	Description     *string        `json:"description"`
+	IPAddress       *string        `json:"ip_address" binding:"omitempty,max=100"`
+	UserAgent       *string        `json:"user_agent"`
+	ActorType       *string        `json:"actor_type" binding:"omitempty,max=100"`
+	ActorIdentifier *string        `json:"actor_identifier" binding:"omitempty,max=255"`
+	TraceID         *string        `json:"trace_id" binding:"omitempty,max=64"`
+	SpanID          *string        `json:"span_id" binding:"omitempty,max=32"`
+	RequestID       *string        `json:"request_id" binding:"omitempty,max=128"`
+	HTTPMethod      *string        `json:"http_method" binding:"omitempty,max=10"`
+	HTTPPath        *string        `json:"http_path"`
+	RoutePath       *string        `json:"route_path"`
+	QueryParams     map[string]any `json:"query_params"`
+	RequestBody     map[string]any `json:"request_body"`
+	ResponseStatus  *int           `json:"response_status"`
+	ResponseBody    map[string]any `json:"response_body"`
+	ErrorMessage    *string        `json:"error_message"`
+	Outcome         *string        `json:"outcome" binding:"omitempty,max=50"`
+	ResourceType    *string        `json:"resource_type" binding:"omitempty,max=100"`
+	ResourceID      *string        `json:"resource_id" binding:"omitempty,uuid"`
+	DurationMS      *int64         `json:"duration_ms"`
 }
 
 type updateRequest = createRequest
 
 type response struct {
-	ID          string  `json:"id"`
-	MemberID    *string `json:"member_id"`
-	Action      *string `json:"action"`
-	Module      *string `json:"module"`
-	Description *string `json:"description"`
-	IPAddress   *string `json:"ip_address"`
-	UserAgent   *string `json:"user_agent"`
-	CreatedAt   string  `json:"created_at"`
+	ID              string         `json:"id"`
+	MemberID        *string        `json:"member_id"`
+	Action          *string        `json:"action"`
+	Module          *string        `json:"module"`
+	Description     *string        `json:"description"`
+	IPAddress       *string        `json:"ip_address"`
+	UserAgent       *string        `json:"user_agent"`
+	ActorType       *string        `json:"actor_type"`
+	ActorIdentifier *string        `json:"actor_identifier"`
+	TraceID         *string        `json:"trace_id"`
+	SpanID          *string        `json:"span_id"`
+	RequestID       *string        `json:"request_id"`
+	HTTPMethod      *string        `json:"http_method"`
+	HTTPPath        *string        `json:"http_path"`
+	RoutePath       *string        `json:"route_path"`
+	QueryParams     map[string]any `json:"query_params"`
+	RequestBody     map[string]any `json:"request_body"`
+	ResponseStatus  *int           `json:"response_status"`
+	ResponseBody    map[string]any `json:"response_body"`
+	ErrorMessage    *string        `json:"error_message"`
+	Outcome         *string        `json:"outcome"`
+	ResourceType    *string        `json:"resource_type"`
+	ResourceID      *string        `json:"resource_id"`
+	DurationMS      *int64         `json:"duration_ms"`
+	CreatedAt       string         `json:"created_at"`
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -61,8 +95,14 @@ func (c *Controller) Create(ctx *gin.Context) {
 	if !ok {
 		return
 	}
+	resourceID, ok := parseResourceID(ctx, req.ResourceID)
+	if !ok {
+		return
+	}
 
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{MemberID: memberID, Action: req.Action, Module: req.Module, Description: req.Description, IPAddress: req.IPAddress, UserAgent: req.UserAgent})
+	enrichAuditContext(ctx, &req)
+
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{MemberID: memberID, Action: req.Action, Module: req.Module, Description: req.Description, IPAddress: req.IPAddress, UserAgent: req.UserAgent, ActorType: req.ActorType, ActorIdentifier: req.ActorIdentifier, TraceID: req.TraceID, SpanID: req.SpanID, RequestID: req.RequestID, HTTPMethod: req.HTTPMethod, HTTPPath: req.HTTPPath, RoutePath: req.RoutePath, QueryParams: req.QueryParams, RequestBody: req.RequestBody, ResponseStatus: req.ResponseStatus, ResponseBody: req.ResponseBody, ErrorMessage: req.ErrorMessage, Outcome: req.Outcome, ResourceType: req.ResourceType, ResourceID: resourceID, DurationMS: req.DurationMS})
 	if err != nil {
 		if errors.Is(err, ErrMemberNotFound) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
@@ -160,7 +200,68 @@ func parseMemberID(ctx *gin.Context, raw *string) (*uuid.UUID, bool) {
 }
 
 func toResponse(item *ent.SystemAuditLog) response {
-	return response{ID: item.ID.String(), MemberID: utils.UUIDToStringPtr(item.MemberID), Action: item.Action, Module: item.Module, Description: item.Description, IPAddress: item.IPAddress, UserAgent: item.UserAgent, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout)}
+	return response{ID: item.ID.String(), MemberID: utils.UUIDToStringPtr(item.MemberID), Action: item.Action, Module: item.Module, Description: item.Description, IPAddress: item.IPAddress, UserAgent: item.UserAgent, ActorType: item.ActorType, ActorIdentifier: item.ActorIdentifier, TraceID: item.TraceID, SpanID: item.SpanID, RequestID: item.RequestID, HTTPMethod: item.HTTPMethod, HTTPPath: item.HTTPPath, RoutePath: item.RoutePath, QueryParams: item.QueryParams, RequestBody: item.RequestBody, ResponseStatus: item.ResponseStatus, ResponseBody: item.ResponseBody, ErrorMessage: item.ErrorMessage, Outcome: item.Outcome, ResourceType: item.ResourceType, ResourceID: utils.UUIDToStringPtr(item.ResourceID), DurationMS: item.DurationMS, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout)}
+}
+
+func parseResourceID(ctx *gin.Context, raw *string) (*uuid.UUID, bool) {
+	id, err := utils.ParseUUIDPtr(raw)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return nil, false
+	}
+	return id, true
+}
+
+func enrichAuditContext(ctx *gin.Context, req *createRequest) {
+	if req.IPAddress == nil {
+		ip := ctx.ClientIP()
+		req.IPAddress = &ip
+	}
+	if req.UserAgent == nil {
+		ua := ctx.Request.UserAgent()
+		req.UserAgent = &ua
+	}
+	if req.HTTPMethod == nil {
+		method := ctx.Request.Method
+		req.HTTPMethod = &method
+	}
+	if req.HTTPPath == nil {
+		path := ctx.Request.URL.Path
+		req.HTTPPath = &path
+	}
+	if req.RoutePath == nil {
+		routePath := ctx.FullPath()
+		req.RoutePath = &routePath
+	}
+	if req.QueryParams == nil {
+		params := map[string]any{}
+		for key, values := range ctx.Request.URL.Query() {
+			if len(values) == 1 {
+				params[key] = values[0]
+			} else {
+				copied := make([]string, len(values))
+				copy(copied, values)
+				params[key] = copied
+			}
+		}
+		req.QueryParams = params
+	}
+	spanCtx := trace.SpanContextFromContext(ctx.Request.Context())
+	if spanCtx.IsValid() {
+		if req.TraceID == nil {
+			traceID := spanCtx.TraceID().String()
+			req.TraceID = &traceID
+		}
+		if req.SpanID == nil {
+			spanID := spanCtx.SpanID().String()
+			req.SpanID = &spanID
+		}
+	}
+	if req.RequestID == nil {
+		if value := strings.TrimSpace(ctx.GetHeader("X-Request-ID")); value != "" {
+			req.RequestID = &value
+		}
+	}
 }
 
 func parsePageSize(ctx *gin.Context) (int, int) {
