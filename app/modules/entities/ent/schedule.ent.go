@@ -28,6 +28,8 @@ type Schedule struct {
 	StartTime           *time.Time        `bun:"start_time,type:time"`
 	EndTime             *time.Time        `bun:"end_time,type:time"`
 	PeriodNo            *int              `bun:"period_no"`
+	Note                *string           `bun:"note"`
+	IsActive            bool              `bun:"is_active,notnull,default:true"`
 }
 
 func ToScheduleDayOfWeek(value string) ScheduleDayOfWeek {

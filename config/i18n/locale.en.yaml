@@ -27,6 +27,13 @@ storage-link-not-found: Storage link not found
 gender-name-duplicate: Gender name already exists
 prefix-name-duplicate: Prefix name already exists
 academic-year-duplicate: Academic year already exists
+subject-code-duplicate: Subject code already exists in this school
+subject-assignment-duplicate: Subject assignment already exists for this classroom, teacher, subject, academic year and semester
+subject-assignment-invalid-date-range: End date must be after or equal start date for subject assignment
+schedule-duplicate: Schedule entry already exists in this assignment for the same slot
+schedule-invalid-time-range: End time must be after start time
+schedule-teacher-conflict: Teacher has another class in this time slot
+schedule-classroom-conflict: Classroom is already occupied in this time slot
 academic-year-invalid-date-range: End date must be after or equal start date
 member-not-found: Member not found
 member-email-duplicate: Email already exists
@@ -48,6 +55,7 @@ student-code-duplicate: Student code already exists
 parent-student-not-found: Parent-student relation not found
 student-enrollment-not-found: Student enrollment not found
 student-enrollment-student-no-duplicate: Student number already exists in this subject assignment
+student-enrollment-capacity-exceeded: Subject assignment has reached maximum student capacity
 student-assessment-submission-not-found: Student assessment submission not found
 student-invoice-not-found: Student invoice not found
 student-attendance-log-not-found: Student attendance log not found

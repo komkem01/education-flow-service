@@ -3,6 +3,7 @@ package subjects
 import (
 	"database/sql"
 	"errors"
+	"strings"
 
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,28 +26,52 @@ func newController(trace trace.Tracer, svc *Service) *Controller {
 }
 
 type createSubjectRequest struct {
-	SchoolID    string   `json:"school_id" binding:"required,uuid"`
-	SubjectCode *string  `json:"subject_code" binding:"omitempty,max=50"`
-	Name        string   `json:"name" binding:"required,min=1,max=255"`
-	Credits     *float64 `json:"credits"`
-	Type        string   `json:"type" binding:"omitempty,oneof=core elective activity"`
+	SchoolID           string   `json:"school_id" binding:"required,uuid"`
+	SubjectCode        *string  `json:"subject_code" binding:"omitempty,max=50"`
+	Name               string   `json:"name" binding:"required,min=1,max=255"`
+	NameEN             *string  `json:"name_en" binding:"omitempty,max=255"`
+	Description        *string  `json:"description" binding:"omitempty,max=4000"`
+	LearningObjectives *string  `json:"learning_objectives" binding:"omitempty,max=4000"`
+	LearningOutcomes   *string  `json:"learning_outcomes" binding:"omitempty,max=4000"`
+	AssessmentCriteria *string  `json:"assessment_criteria" binding:"omitempty,max=4000"`
+	GradeLevel         *string  `json:"grade_level" binding:"omitempty,max=50"`
+	Category           *string  `json:"category" binding:"omitempty,max=100"`
+	Credits            *float64 `json:"credits" binding:"omitempty,gte=0"`
+	Type               string   `json:"type" binding:"omitempty,oneof=core elective activity"`
+	IsActive           *bool    `json:"is_active"`
 }
 
 type updateSubjectRequest struct {
-	SchoolID    string   `json:"school_id" binding:"required,uuid"`
-	SubjectCode *string  `json:"subject_code" binding:"omitempty,max=50"`
-	Name        string   `json:"name" binding:"required,min=1,max=255"`
-	Credits     *float64 `json:"credits"`
-	Type        string   `json:"type" binding:"required,oneof=core elective activity"`
+	SchoolID           string   `json:"school_id" binding:"required,uuid"`
+	SubjectCode        *string  `json:"subject_code" binding:"omitempty,max=50"`
+	Name               string   `json:"name" binding:"required,min=1,max=255"`
+	NameEN             *string  `json:"name_en" binding:"omitempty,max=255"`
+	Description        *string  `json:"description" binding:"omitempty,max=4000"`
+	LearningObjectives *string  `json:"learning_objectives" binding:"omitempty,max=4000"`
+	LearningOutcomes   *string  `json:"learning_outcomes" binding:"omitempty,max=4000"`
+	AssessmentCriteria *string  `json:"assessment_criteria" binding:"omitempty,max=4000"`
+	GradeLevel         *string  `json:"grade_level" binding:"omitempty,max=50"`
+	Category           *string  `json:"category" binding:"omitempty,max=100"`
+	Credits            *float64 `json:"credits" binding:"omitempty,gte=0"`
+	Type               string   `json:"type" binding:"required,oneof=core elective activity"`
+	IsActive           *bool    `json:"is_active"`
 }
 
 type subjectResponse struct {
-	ID          string   `json:"id"`
-	SchoolID    string   `json:"school_id"`
-	SubjectCode *string  `json:"subject_code"`
-	Name        string   `json:"name"`
-	Credits     *float64 `json:"credits"`
-	Type        string   `json:"type"`
+	ID                 string   `json:"id"`
+	SchoolID           string   `json:"school_id"`
+	SubjectCode        *string  `json:"subject_code"`
+	Name               string   `json:"name"`
+	NameEN             *string  `json:"name_en"`
+	Description        *string  `json:"description"`
+	LearningObjectives *string  `json:"learning_objectives"`
+	LearningOutcomes   *string  `json:"learning_outcomes"`
+	AssessmentCriteria *string  `json:"assessment_criteria"`
+	GradeLevel         *string  `json:"grade_level"`
+	Category           *string  `json:"category"`
+	Credits            *float64 `json:"credits"`
+	Type               string   `json:"type"`
+	IsActive           bool     `json:"is_active"`
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -67,8 +93,17 @@ func (c *Controller) Create(ctx *gin.Context) {
 		subjectType = ent.ToSubjectType(req.Type)
 	}
 
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateSubjectInput{SchoolID: schoolID, SubjectCode: req.SubjectCode, Name: req.Name, Credits: req.Credits, Type: subjectType})
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateSubjectInput{SchoolID: schoolID, SubjectCode: req.SubjectCode, Name: req.Name, NameEN: req.NameEN, Description: req.Description, LearningObjectives: req.LearningObjectives, LearningOutcomes: req.LearningOutcomes, AssessmentCriteria: req.AssessmentCriteria, GradeLevel: req.GradeLevel, Category: req.Category, Credits: req.Credits, Type: subjectType, IsActive: isActive})
 	if err != nil {
+		if isSubjectCodeDuplicateError(err) {
+			base.ValidateFailed(ctx, ci18n.SubjectCodeDuplicate, nil)
+			return
+		}
 		log.Errf("subjects.create.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
@@ -140,10 +175,19 @@ func (c *Controller) Update(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateSubjectInput{SchoolID: schoolID, SubjectCode: req.SubjectCode, Name: req.Name, Credits: req.Credits, Type: ent.ToSubjectType(req.Type)})
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateSubjectInput{SchoolID: schoolID, SubjectCode: req.SubjectCode, Name: req.Name, NameEN: req.NameEN, Description: req.Description, LearningObjectives: req.LearningObjectives, LearningOutcomes: req.LearningOutcomes, AssessmentCriteria: req.AssessmentCriteria, GradeLevel: req.GradeLevel, Category: req.Category, Credits: req.Credits, Type: ent.ToSubjectType(req.Type), IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.SubjectNotFound, nil)
+			return
+		}
+		if isSubjectCodeDuplicateError(err) {
+			base.ValidateFailed(ctx, ci18n.SubjectCodeDuplicate, nil)
 			return
 		}
 		log.Errf("subjects.update.error: %v", err)
@@ -181,5 +225,34 @@ func parseSubjectID(ctx *gin.Context) (uuid.UUID, bool) {
 }
 
 func toSubjectResponse(item *ent.Subject) subjectResponse {
-	return subjectResponse{ID: item.ID.String(), SchoolID: item.SchoolID.String(), SubjectCode: item.SubjectCode, Name: item.Name, Credits: item.Credits, Type: string(item.Type)}
+	return subjectResponse{
+		ID:                 item.ID.String(),
+		SchoolID:           item.SchoolID.String(),
+		SubjectCode:        item.SubjectCode,
+		Name:               item.Name,
+		NameEN:             item.NameEN,
+		Description:        item.Description,
+		LearningObjectives: item.LearningObjectives,
+		LearningOutcomes:   item.LearningOutcomes,
+		AssessmentCriteria: item.AssessmentCriteria,
+		GradeLevel:         item.GradeLevel,
+		Category:           item.Category,
+		Credits:            item.Credits,
+		Type:               string(item.Type),
+		IsActive:           item.IsActive,
+	}
+}
+
+func isSubjectCodeDuplicateError(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	if pgErr.Code != "23505" {
+		return false
+	}
+
+	constraint := strings.ToLower(pgErr.ConstraintName)
+	return strings.Contains(constraint, "uq_subjects_school_subject_code")
 }

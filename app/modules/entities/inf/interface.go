@@ -278,9 +278,11 @@ type MemberParentStudentEntity interface {
 
 type StudentEnrollmentEntity interface {
 	CreateStudentEnrollment(ctx context.Context, enrollment *ent.StudentEnrollment) (*ent.StudentEnrollment, error)
+	GetStudentEnrollmentByID(ctx context.Context, id uuid.UUID) (*ent.StudentEnrollment, error)
 	UpdateStudentEnrollmentByID(ctx context.Context, id uuid.UUID, enrollment *ent.StudentEnrollment) (*ent.StudentEnrollment, error)
 	DeleteStudentEnrollmentByID(ctx context.Context, id uuid.UUID) error
 	ListStudentEnrollmentsByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentEnrollment, error)
+	CountActiveStudentEnrollmentsBySubjectAssignmentID(ctx context.Context, subjectAssignmentID uuid.UUID) (int, error)
 	StudentEnrollmentBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error)
 }
 

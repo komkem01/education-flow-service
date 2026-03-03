@@ -35,8 +35,16 @@ func (s *Service) UpdateSubjectByID(ctx context.Context, id uuid.UUID, subject *
 		Set("school_id = ?", subject.SchoolID).
 		Set("subject_code = ?", subject.SubjectCode).
 		Set("name = ?", subject.Name).
+		Set("name_en = ?", subject.NameEN).
+		Set("description = ?", subject.Description).
+		Set("learning_objectives = ?", subject.LearningObjectives).
+		Set("learning_outcomes = ?", subject.LearningOutcomes).
+		Set("assessment_criteria = ?", subject.AssessmentCriteria).
+		Set("grade_level = ?", subject.GradeLevel).
+		Set("category = ?", subject.Category).
 		Set("credits = ?", subject.Credits).
 		Set("type = ?", subject.Type).
+		Set("is_active = ?", subject.IsActive).
 		Where("id = ?", id).
 		Returning("*").
 		Scan(ctx); err != nil {

@@ -14,9 +14,14 @@ type Module struct {
 	Ctl    *Controller
 }
 
-func New(conf *config.Config[Config], db entitiesinf.ScheduleEntity) *Module {
+type serviceDB interface {
+	entitiesinf.ScheduleEntity
+	entitiesinf.SubjectAssignmentEntity
+}
+
+func New(conf *config.Config[Config], db serviceDB) *Module {
 	tracer := otel.Tracer("education-flow.modules.schedules")
-	svc := newService(&Options{Config: conf, tracer: tracer, db: db})
+	svc := newService(&Options{Config: conf, tracer: tracer, db: db, saDB: db})
 
 	return &Module{tracer: tracer, Svc: svc, Ctl: newController(tracer, svc)}
 }

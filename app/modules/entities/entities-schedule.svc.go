@@ -37,6 +37,8 @@ func (s *Service) UpdateScheduleByID(ctx context.Context, id uuid.UUID, schedule
 		Set("start_time = ?", schedule.StartTime).
 		Set("end_time = ?", schedule.EndTime).
 		Set("period_no = ?", schedule.PeriodNo).
+		Set("note = ?", schedule.Note).
+		Set("is_active = ?", schedule.IsActive).
 		Where("id = ?", id).
 		Returning("*").
 		Scan(ctx); err != nil {

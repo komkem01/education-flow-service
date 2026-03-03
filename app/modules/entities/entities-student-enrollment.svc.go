@@ -19,6 +19,15 @@ func (s *Service) CreateStudentEnrollment(ctx context.Context, enrollment *ent.S
 	return enrollment, nil
 }
 
+func (s *Service) GetStudentEnrollmentByID(ctx context.Context, id uuid.UUID) (*ent.StudentEnrollment, error) {
+	enrollment := new(ent.StudentEnrollment)
+	if err := s.db.NewSelect().Model(enrollment).Where("id = ?", id).Scan(ctx); err != nil {
+		return nil, err
+	}
+
+	return enrollment, nil
+}
+
 func (s *Service) UpdateStudentEnrollmentByID(ctx context.Context, id uuid.UUID, enrollment *ent.StudentEnrollment) (*ent.StudentEnrollment, error) {
 	updated := new(ent.StudentEnrollment)
 	if err := s.db.NewUpdate().
@@ -47,6 +56,19 @@ func (s *Service) ListStudentEnrollmentsByStudentID(ctx context.Context, student
 	}
 
 	return enrollments, nil
+}
+
+func (s *Service) CountActiveStudentEnrollmentsBySubjectAssignmentID(ctx context.Context, subjectAssignmentID uuid.UUID) (int, error) {
+	count, err := s.db.NewSelect().
+		Model((*ent.StudentEnrollment)(nil)).
+		Where("subject_assignment_id = ?", subjectAssignmentID).
+		Where("status = ?", ent.StudentEnrollmentStatusActive).
+		Count(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 func (s *Service) StudentEnrollmentBelongsToStudent(ctx context.Context, id uuid.UUID, studentID uuid.UUID) (bool, error) {

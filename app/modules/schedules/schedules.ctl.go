@@ -3,6 +3,8 @@ package schedules
 import (
 	"database/sql"
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 
 	"education-flow/app/modules/entities/ent"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -29,7 +32,9 @@ type createScheduleRequest struct {
 	DayOfWeek           string  `json:"day_of_week" binding:"omitempty,oneof=monday tuesday wednesday thursday friday saturday sunday"`
 	StartTime           *string `json:"start_time" binding:"omitempty,max=8"`
 	EndTime             *string `json:"end_time" binding:"omitempty,max=8"`
-	PeriodNo            *int    `json:"period_no"`
+	PeriodNo            *int    `json:"period_no" binding:"omitempty,gte=1"`
+	Note                *string `json:"note" binding:"omitempty,max=4000"`
+	IsActive            *bool   `json:"is_active"`
 }
 
 type updateScheduleRequest struct {
@@ -37,7 +42,9 @@ type updateScheduleRequest struct {
 	DayOfWeek           string  `json:"day_of_week" binding:"required,oneof=monday tuesday wednesday thursday friday saturday sunday"`
 	StartTime           *string `json:"start_time" binding:"omitempty,max=8"`
 	EndTime             *string `json:"end_time" binding:"omitempty,max=8"`
-	PeriodNo            *int    `json:"period_no"`
+	PeriodNo            *int    `json:"period_no" binding:"omitempty,gte=1"`
+	Note                *string `json:"note" binding:"omitempty,max=4000"`
+	IsActive            *bool   `json:"is_active"`
 }
 
 type scheduleResponse struct {
@@ -47,6 +54,8 @@ type scheduleResponse struct {
 	StartTime           *string `json:"start_time"`
 	EndTime             *string `json:"end_time"`
 	PeriodNo            *int    `json:"period_no"`
+	Note                *string `json:"note"`
+	IsActive            bool    `json:"is_active"`
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -79,8 +88,34 @@ func (c *Controller) Create(ctx *gin.Context) {
 		dayOfWeek = ent.ToScheduleDayOfWeek(req.DayOfWeek)
 	}
 
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateScheduleInput{SubjectAssignmentID: subjectAssignmentID, DayOfWeek: dayOfWeek, StartTime: startTime, EndTime: endTime, PeriodNo: req.PeriodNo})
+	if startTime != nil && endTime != nil && !endTime.After(*startTime) {
+		base.ValidateFailed(ctx, ci18n.ScheduleInvalidTimeRange, nil)
+		return
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateScheduleInput{SubjectAssignmentID: subjectAssignmentID, DayOfWeek: dayOfWeek, StartTime: startTime, EndTime: endTime, PeriodNo: req.PeriodNo, Note: req.Note, IsActive: isActive})
 	if err != nil {
+		if errors.Is(err, ErrScheduleTeacherConflict) {
+			base.ValidateFailed(ctx, ci18n.ScheduleTeacherConflict, nil)
+			return
+		}
+		if errors.Is(err, ErrScheduleClassroomConflict) {
+			base.ValidateFailed(ctx, ci18n.ScheduleClassroomConflict, nil)
+			return
+		}
+		if isScheduleDuplicateError(err) {
+			base.ValidateFailed(ctx, ci18n.ScheduleDuplicate, nil)
+			return
+		}
+		if isScheduleTimeRangeError(err) {
+			base.ValidateFailed(ctx, ci18n.ScheduleInvalidTimeRange, nil)
+			return
+		}
 		log.Errf("schedules.create.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
@@ -99,11 +134,25 @@ func (c *Controller) List(ctx *gin.Context) {
 
 	var dayOfWeek *ent.ScheduleDayOfWeek
 	if raw := ctx.Query("day_of_week"); raw != "" {
-		value := ent.ToScheduleDayOfWeek(raw)
+		value, ok := parseScheduleDayOfWeek(raw)
+		if !ok {
+			base.BadRequest(ctx, ci18n.BadRequest, nil)
+			return
+		}
 		dayOfWeek = &value
 	}
 
-	items, err := c.svc.List(ctx.Request.Context(), &ListSchedulesInput{SubjectAssignmentID: subjectAssignmentID, DayOfWeek: dayOfWeek})
+	var onlyActive *bool
+	if raw := strings.TrimSpace(ctx.Query("only_active")); raw != "" {
+		value, convErr := strconv.ParseBool(raw)
+		if convErr != nil {
+			base.BadRequest(ctx, ci18n.BadRequest, nil)
+			return
+		}
+		onlyActive = &value
+	}
+
+	items, err := c.svc.List(ctx.Request.Context(), &ListSchedulesInput{SubjectAssignmentID: subjectAssignmentID, DayOfWeek: dayOfWeek, OnlyActive: onlyActive})
 	if err != nil {
 		log.Errf("schedules.list.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
@@ -169,10 +218,36 @@ func (c *Controller) Update(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateScheduleInput{SubjectAssignmentID: subjectAssignmentID, DayOfWeek: ent.ToScheduleDayOfWeek(req.DayOfWeek), StartTime: startTime, EndTime: endTime, PeriodNo: req.PeriodNo})
+	if startTime != nil && endTime != nil && !endTime.After(*startTime) {
+		base.ValidateFailed(ctx, ci18n.ScheduleInvalidTimeRange, nil)
+		return
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateScheduleInput{SubjectAssignmentID: subjectAssignmentID, DayOfWeek: ent.ToScheduleDayOfWeek(req.DayOfWeek), StartTime: startTime, EndTime: endTime, PeriodNo: req.PeriodNo, Note: req.Note, IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.ScheduleNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrScheduleTeacherConflict) {
+			base.ValidateFailed(ctx, ci18n.ScheduleTeacherConflict, nil)
+			return
+		}
+		if errors.Is(err, ErrScheduleClassroomConflict) {
+			base.ValidateFailed(ctx, ci18n.ScheduleClassroomConflict, nil)
+			return
+		}
+		if isScheduleDuplicateError(err) {
+			base.ValidateFailed(ctx, ci18n.ScheduleDuplicate, nil)
+			return
+		}
+		if isScheduleTimeRangeError(err) {
+			base.ValidateFailed(ctx, ci18n.ScheduleInvalidTimeRange, nil)
 			return
 		}
 		log.Errf("schedules.update.error: %v", err)
@@ -214,13 +289,19 @@ func parseClockPtr(raw *string) (*time.Time, error) {
 		return nil, nil
 	}
 	if value, err := time.Parse("15:04:05", *raw); err == nil {
-		return &value, nil
+		normalized := normalizeClock(value)
+		return &normalized, nil
 	}
 	value, err := time.Parse("15:04", *raw)
 	if err != nil {
 		return nil, err
 	}
-	return &value, nil
+	normalized := normalizeClock(value)
+	return &normalized, nil
+}
+
+func normalizeClock(value time.Time) time.Time {
+	return time.Date(1970, 1, 1, value.Hour(), value.Minute(), value.Second(), 0, time.UTC)
 }
 
 func toClockStringPtr(value *time.Time) *string {
@@ -232,5 +313,43 @@ func toClockStringPtr(value *time.Time) *string {
 }
 
 func toScheduleResponse(item *ent.Schedule) scheduleResponse {
-	return scheduleResponse{ID: item.ID.String(), SubjectAssignmentID: item.SubjectAssignmentID.String(), DayOfWeek: string(item.DayOfWeek), StartTime: toClockStringPtr(item.StartTime), EndTime: toClockStringPtr(item.EndTime), PeriodNo: item.PeriodNo}
+	return scheduleResponse{ID: item.ID.String(), SubjectAssignmentID: item.SubjectAssignmentID.String(), DayOfWeek: string(item.DayOfWeek), StartTime: toClockStringPtr(item.StartTime), EndTime: toClockStringPtr(item.EndTime), PeriodNo: item.PeriodNo, Note: item.Note, IsActive: item.IsActive}
+}
+
+func parseScheduleDayOfWeek(raw string) (ent.ScheduleDayOfWeek, bool) {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	switch value {
+	case "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday":
+		return ent.ToScheduleDayOfWeek(value), true
+	default:
+		return "", false
+	}
+}
+
+func isScheduleDuplicateError(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	if pgErr.Code != "23505" {
+		return false
+	}
+
+	constraint := strings.ToLower(pgErr.ConstraintName)
+	return strings.Contains(constraint, "uq_schedules_assignment_day_period") || strings.Contains(constraint, "uq_schedules_assignment_day_timerange")
+}
+
+func isScheduleTimeRangeError(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	if pgErr.Code != "23514" {
+		return false
+	}
+
+	constraint := strings.ToLower(pgErr.ConstraintName)
+	return strings.Contains(constraint, "chk_schedules_time_range")
 }

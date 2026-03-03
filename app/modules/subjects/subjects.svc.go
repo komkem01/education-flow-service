@@ -26,11 +26,19 @@ type Options struct {
 }
 
 type CreateSubjectInput struct {
-	SchoolID    uuid.UUID
-	SubjectCode *string
-	Name        string
-	Credits     *float64
-	Type        ent.SubjectType
+	SchoolID           uuid.UUID
+	SubjectCode        *string
+	Name               string
+	NameEN             *string
+	Description        *string
+	LearningObjectives *string
+	LearningOutcomes   *string
+	AssessmentCriteria *string
+	GradeLevel         *string
+	Category           *string
+	Credits            *float64
+	Type               ent.SubjectType
+	IsActive           bool
 }
 
 type UpdateSubjectInput = CreateSubjectInput
@@ -44,7 +52,21 @@ func newService(opt *Options) *Service {
 }
 
 func (s *Service) Create(ctx context.Context, input *CreateSubjectInput) (*ent.Subject, error) {
-	item := &ent.Subject{SchoolID: input.SchoolID, SubjectCode: trimStringPtr(input.SubjectCode), Name: strings.TrimSpace(input.Name), Credits: input.Credits, Type: input.Type}
+	item := &ent.Subject{
+		SchoolID:           input.SchoolID,
+		SubjectCode:        trimStringPtr(input.SubjectCode),
+		Name:               strings.TrimSpace(input.Name),
+		NameEN:             trimStringPtr(input.NameEN),
+		Description:        trimStringPtr(input.Description),
+		LearningObjectives: trimStringPtr(input.LearningObjectives),
+		LearningOutcomes:   trimStringPtr(input.LearningOutcomes),
+		AssessmentCriteria: trimStringPtr(input.AssessmentCriteria),
+		GradeLevel:         trimStringPtr(input.GradeLevel),
+		Category:           trimStringPtr(input.Category),
+		Credits:            input.Credits,
+		Type:               input.Type,
+		IsActive:           input.IsActive,
+	}
 	return s.db.CreateSubject(ctx, item)
 }
 
@@ -57,7 +79,21 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.Subject, erro
 }
 
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateSubjectInput) (*ent.Subject, error) {
-	item := &ent.Subject{SchoolID: input.SchoolID, SubjectCode: trimStringPtr(input.SubjectCode), Name: strings.TrimSpace(input.Name), Credits: input.Credits, Type: input.Type}
+	item := &ent.Subject{
+		SchoolID:           input.SchoolID,
+		SubjectCode:        trimStringPtr(input.SubjectCode),
+		Name:               strings.TrimSpace(input.Name),
+		NameEN:             trimStringPtr(input.NameEN),
+		Description:        trimStringPtr(input.Description),
+		LearningObjectives: trimStringPtr(input.LearningObjectives),
+		LearningOutcomes:   trimStringPtr(input.LearningOutcomes),
+		AssessmentCriteria: trimStringPtr(input.AssessmentCriteria),
+		GradeLevel:         trimStringPtr(input.GradeLevel),
+		Category:           trimStringPtr(input.Category),
+		Credits:            input.Credits,
+		Type:               input.Type,
+		IsActive:           input.IsActive,
+	}
 	return s.db.UpdateSubjectByID(ctx, id, item)
 }
 

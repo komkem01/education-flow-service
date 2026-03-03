@@ -36,6 +36,13 @@ func (s *Service) UpdateSubjectAssignmentByID(ctx context.Context, id uuid.UUID,
 		Set("teacher_id = ?", subjectAssignment.TeacherID).
 		Set("classroom_id = ?", subjectAssignment.ClassroomID).
 		Set("academic_year_id = ?", subjectAssignment.AcademicYearID).
+		Set("section = ?", subjectAssignment.Section).
+		Set("semester_no = ?", subjectAssignment.SemesterNo).
+		Set("max_students = ?", subjectAssignment.MaxStudents).
+		Set("start_date = ?", subjectAssignment.StartDate).
+		Set("end_date = ?", subjectAssignment.EndDate).
+		Set("note = ?", subjectAssignment.Note).
+		Set("is_active = ?", subjectAssignment.IsActive).
 		Where("id = ?", id).
 		Returning("*").
 		Scan(ctx); err != nil {

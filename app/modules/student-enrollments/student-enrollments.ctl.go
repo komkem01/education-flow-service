@@ -69,6 +69,10 @@ func (c *Controller) Create(ctx *gin.Context) {
 	}
 	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{StudentID: studentID, SubjectAssignmentID: subjectAssignmentID, StudentNo: req.StudentNo, Status: status})
 	if err != nil {
+		if errors.Is(err, ErrSubjectAssignmentCapacityExceeded) {
+			base.ValidateFailed(ctx, ci18n.StudentEnrollmentCapacityExceeded, nil)
+			return
+		}
 		if isEnrollmentStudentNoDuplicateError(err) {
 			base.ValidateFailed(ctx, ci18n.StudentEnrollmentStudentNoDuplicate, nil)
 			return
@@ -119,6 +123,10 @@ func (c *Controller) Update(ctx *gin.Context) {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.StudentEnrollmentNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrSubjectAssignmentCapacityExceeded) {
+			base.ValidateFailed(ctx, ci18n.StudentEnrollmentCapacityExceeded, nil)
 			return
 		}
 		if isEnrollmentStudentNoDuplicateError(err) {
