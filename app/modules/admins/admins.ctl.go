@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
+	"time"
 
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
@@ -15,6 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/trace"
 )
+
+const adminDateLayoutOnly = "2006-01-02"
 
 type Controller struct {
 	tracer trace.Tracer
@@ -38,15 +41,34 @@ type createAdminRequest struct {
 type updateAdminRequest = createAdminRequest
 
 type registerAdminRequest struct {
-	SchoolID  string  `json:"school_id" binding:"required,uuid"`
-	Email     string  `json:"email" binding:"required,email,max=255"`
-	Password  string  `json:"password" binding:"required,min=6,max=255"`
-	GenderID  *string `json:"gender_id" binding:"omitempty,uuid"`
-	PrefixID  *string `json:"prefix_id" binding:"omitempty,uuid"`
-	FirstName *string `json:"first_name" binding:"omitempty,max=255"`
-	LastName  *string `json:"last_name" binding:"omitempty,max=255"`
-	Phone     *string `json:"phone" binding:"omitempty,max=50"`
-	IsActive  *bool   `json:"is_active"`
+	SchoolID        string                               `json:"school_id" binding:"required,uuid"`
+	Email           string                               `json:"email" binding:"required,email,max=255"`
+	Password        string                               `json:"password" binding:"required,min=6,max=255"`
+	GenderID        *string                              `json:"gender_id" binding:"omitempty,uuid"`
+	PrefixID        *string                              `json:"prefix_id" binding:"omitempty,uuid"`
+	FirstName       *string                              `json:"first_name" binding:"omitempty,max=255"`
+	LastName        *string                              `json:"last_name" binding:"omitempty,max=255"`
+	Phone           *string                              `json:"phone" binding:"omitempty,max=50"`
+	IsActive        *bool                                `json:"is_active"`
+	Educations      []registerAdminEducationRequest      `json:"educations" binding:"required,min=1,dive"`
+	WorkExperiences []registerAdminWorkExperienceRequest `json:"work_experiences" binding:"required,min=1,dive"`
+}
+
+type registerAdminEducationRequest struct {
+	DegreeLevel    *string `json:"degree_level" binding:"omitempty,max=100"`
+	DegreeName     *string `json:"degree_name" binding:"omitempty,max=255"`
+	Major          *string `json:"major" binding:"omitempty,max=255"`
+	University     *string `json:"university" binding:"omitempty,max=255"`
+	GraduationYear *string `json:"graduation_year" binding:"omitempty,max=10"`
+}
+
+type registerAdminWorkExperienceRequest struct {
+	Organization *string `json:"organization" binding:"omitempty,max=255"`
+	Position     *string `json:"position" binding:"omitempty,max=255"`
+	StartDate    *string `json:"start_date" binding:"omitempty,datetime=2006-01-02"`
+	EndDate      *string `json:"end_date" binding:"omitempty,datetime=2006-01-02"`
+	IsCurrent    *bool   `json:"is_current"`
+	Description  *string `json:"description"`
 }
 
 type adminResponse struct {
@@ -99,21 +121,66 @@ func (c *Controller) Register(ctx *gin.Context) {
 		return
 	}
 
+	educations := make([]RegisterAdminEducationInput, 0, len(req.Educations))
+	for _, item := range req.Educations {
+		educations = append(educations, RegisterAdminEducationInput{
+			DegreeLevel:    item.DegreeLevel,
+			DegreeName:     item.DegreeName,
+			Major:          item.Major,
+			University:     item.University,
+			GraduationYear: item.GraduationYear,
+		})
+	}
+
+	workExperiences := make([]RegisterAdminWorkExperienceInput, 0, len(req.WorkExperiences))
+	for _, item := range req.WorkExperiences {
+		workStartDate, err := parseAdminDatePtr(item.StartDate)
+		if err != nil {
+			base.BadRequest(ctx, ci18n.BadRequest, nil)
+			return
+		}
+		workEndDate, err := parseAdminDatePtr(item.EndDate)
+		if err != nil {
+			base.BadRequest(ctx, ci18n.BadRequest, nil)
+			return
+		}
+		if workStartDate != nil && workEndDate != nil && workEndDate.Before(*workStartDate) {
+			base.ValidateFailed(ctx, ci18n.AdminInvalidDateRange, nil)
+			return
+		}
+
+		isCurrent := false
+		if item.IsCurrent != nil {
+			isCurrent = *item.IsCurrent
+		}
+
+		workExperiences = append(workExperiences, RegisterAdminWorkExperienceInput{
+			Organization: item.Organization,
+			Position:     item.Position,
+			StartDate:    workStartDate,
+			EndDate:      workEndDate,
+			IsCurrent:    isCurrent,
+			Description:  item.Description,
+		})
+	}
+
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
 
 	member, admin, err := c.svc.Register(ctx.Request.Context(), &RegisterAdminInput{
-		SchoolID:  schoolID,
-		Email:     req.Email,
-		Password:  req.Password,
-		GenderID:  genderID,
-		PrefixID:  prefixID,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Phone:     req.Phone,
-		IsActive:  isActive,
+		SchoolID:        schoolID,
+		Email:           req.Email,
+		Password:        req.Password,
+		GenderID:        genderID,
+		PrefixID:        prefixID,
+		FirstName:       req.FirstName,
+		LastName:        req.LastName,
+		Phone:           req.Phone,
+		IsActive:        isActive,
+		Educations:      educations,
+		WorkExperiences: workExperiences,
 	})
 	if err != nil {
 		if isDuplicateKeyError(err) {
@@ -318,4 +385,15 @@ func isDuplicateKeyError(err error) bool {
 	}
 
 	return false
+}
+
+func parseAdminDatePtr(raw *string) (*time.Time, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	parsed, err := time.Parse(adminDateLayoutOnly, *raw)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
 }

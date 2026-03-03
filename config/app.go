@@ -1,6 +1,7 @@
 package config
 
 import (
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/example"
 	exampletwo "education-flow/app/modules/example-two"
 	"education-flow/app/modules/sentry"
@@ -32,6 +33,7 @@ type Config struct {
 
 	Kafka kafka.Config
 	Log   log.Option
+	Auth  auth.Config
 
 	Example example.Config
 
@@ -44,6 +46,7 @@ var App = Config{
 	},
 	Database: database,
 	Kafka:    kafkaConf,
+	Auth:     auth.Config{},
 
 	AppName: "go_app",
 	Port:    8080,

@@ -21,6 +21,7 @@ type StudentEnrollment struct {
 	ID                  uuid.UUID               `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
 	StudentID           uuid.UUID               `bun:"student_id,type:uuid,notnull"`
 	SubjectAssignmentID uuid.UUID               `bun:"subject_assignment_id,type:uuid,notnull"`
+	StudentNo           *int                    `bun:"student_no"`
 	Status              StudentEnrollmentStatus `bun:"status"`
 	CreatedAt           time.Time               `bun:"created_at,nullzero,notnull,default:current_timestamp"`
 }

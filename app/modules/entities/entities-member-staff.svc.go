@@ -74,9 +74,5 @@ func (s *Service) ListStaffs(ctx context.Context, memberID *uuid.UUID, onlyActiv
 }
 
 func (s *Service) MemberHasStaffRole(ctx context.Context, memberID uuid.UUID) (bool, error) {
-	return s.db.NewSelect().
-		Model((*ent.Member)(nil)).
-		Where("id = ?", memberID).
-		Where("role = ?", ent.MemberRoleStaff).
-		Exists(ctx)
+	return s.MemberHasAnyRole(ctx, memberID, []ent.MemberRole{ent.MemberRoleStaff})
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"education-flow/app/modules/entities/ent"
 	entitiesinf "education-flow/app/modules/entities/inf"
@@ -27,6 +28,8 @@ type Service struct {
 type serviceDB interface {
 	entitiesinf.MemberAdminEntity
 	entitiesinf.MemberEntity
+	entitiesinf.AdminEducationEntity
+	entitiesinf.AdminWorkExperienceEntity
 }
 
 type Config struct{}
@@ -51,16 +54,35 @@ type CreateAdminInput struct {
 type UpdateAdminInput = CreateAdminInput
 
 type RegisterAdminInput struct {
-	SchoolID  uuid.UUID
-	Email     string
-	Password  string
-	GenderID  *uuid.UUID
-	PrefixID  *uuid.UUID
-	AdminCode *string
-	FirstName *string
-	LastName  *string
-	Phone     *string
-	IsActive  bool
+	SchoolID        uuid.UUID
+	Email           string
+	Password        string
+	GenderID        *uuid.UUID
+	PrefixID        *uuid.UUID
+	AdminCode       *string
+	FirstName       *string
+	LastName        *string
+	Phone           *string
+	IsActive        bool
+	Educations      []RegisterAdminEducationInput
+	WorkExperiences []RegisterAdminWorkExperienceInput
+}
+
+type RegisterAdminEducationInput struct {
+	DegreeLevel    *string
+	DegreeName     *string
+	Major          *string
+	University     *string
+	GraduationYear *string
+}
+
+type RegisterAdminWorkExperienceInput struct {
+	Organization *string
+	Position     *string
+	StartDate    *time.Time
+	EndDate      *time.Time
+	IsCurrent    bool
+	Description  *string
 }
 
 type ListAdminsInput struct {
@@ -159,6 +181,13 @@ func (s *Service) Register(ctx context.Context, input *RegisterAdminInput) (*ent
 		return nil, nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	cleanupFns := make([]func(), 0)
+	runCleanup := func() {
+		for i := len(cleanupFns) - 1; i >= 0; i-- {
+			cleanupFns[i]()
+		}
+	}
+
 	adminCode := trimStringPtr(input.AdminCode)
 	autoGenerateCode := adminCode == nil
 
@@ -172,6 +201,7 @@ func (s *Service) Register(ctx context.Context, input *RegisterAdminInput) (*ent
 	if err != nil {
 		return nil, nil, err
 	}
+	cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteMemberByID(ctx, member.ID) })
 
 	adminPayload := &ent.MemberAdmin{
 		MemberID:  member.ID,
@@ -189,7 +219,7 @@ func (s *Service) Register(ctx context.Context, input *RegisterAdminInput) (*ent
 		if autoGenerateCode {
 			code, genErr := utils.GenerateRoleCode("ADM")
 			if genErr != nil {
-				_ = s.db.DeleteMemberByID(ctx, member.ID)
+				runCleanup()
 				return nil, nil, fmt.Errorf("failed to generate admin code: %w", genErr)
 			}
 			adminPayload.AdminCode = &code
@@ -197,16 +227,50 @@ func (s *Service) Register(ctx context.Context, input *RegisterAdminInput) (*ent
 
 		admin, err = s.db.CreateAdmin(ctx, adminPayload)
 		if err == nil {
+			cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteAdminByID(ctx, admin.ID) })
 			break
 		}
 		if !(autoGenerateCode && isAdminCodeDuplicateError(err)) {
-			_ = s.db.DeleteMemberByID(ctx, member.ID)
+			runCleanup()
 			return nil, nil, err
 		}
 	}
 	if admin == nil {
-		_ = s.db.DeleteMemberByID(ctx, member.ID)
+		runCleanup()
 		return nil, nil, fmt.Errorf("failed to create admin after %d code retries", maxAdminCodeGenerateRetry)
+	}
+
+	for _, educationInput := range input.Educations {
+		education, err := s.db.CreateAdminEducation(ctx, &ent.AdminEducation{
+			AdminID:        admin.ID,
+			DegreeLevel:    trimStringPtr(educationInput.DegreeLevel),
+			DegreeName:     trimStringPtr(educationInput.DegreeName),
+			Major:          trimStringPtr(educationInput.Major),
+			University:     trimStringPtr(educationInput.University),
+			GraduationYear: trimStringPtr(educationInput.GraduationYear),
+		})
+		if err != nil {
+			runCleanup()
+			return nil, nil, err
+		}
+		cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteAdminEducationByID(ctx, education.ID) })
+	}
+
+	for _, workInput := range input.WorkExperiences {
+		work, err := s.db.CreateAdminWorkExperience(ctx, &ent.AdminWorkExperience{
+			AdminID:      admin.ID,
+			Organization: trimStringPtr(workInput.Organization),
+			Position:     trimStringPtr(workInput.Position),
+			StartDate:    workInput.StartDate,
+			EndDate:      workInput.EndDate,
+			IsCurrent:    workInput.IsCurrent,
+			Description:  trimStringPtr(workInput.Description),
+		})
+		if err != nil {
+			runCleanup()
+			return nil, nil, err
+		}
+		cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteAdminWorkExperienceByID(ctx, work.ID) })
 	}
 
 	return member, admin, nil

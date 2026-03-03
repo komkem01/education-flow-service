@@ -6,6 +6,7 @@ import (
 
 	academicyears "education-flow/app/modules/academic-years"
 	"education-flow/app/modules/admins"
+	"education-flow/app/modules/auth"
 	assessmentsets "education-flow/app/modules/assessment-sets"
 	"education-flow/app/modules/classrooms"
 	datachangelogs "education-flow/app/modules/data-change-logs"
@@ -46,6 +47,7 @@ import (
 	teacherpdalogs "education-flow/app/modules/teacher-pda-logs"
 	teacherperformanceagreements "education-flow/app/modules/teacher-performance-agreements"
 	teacherprofilerequests "education-flow/app/modules/teacher-profile-requests"
+	teacherworkexperiences "education-flow/app/modules/teacher-work-experiences"
 	"education-flow/app/modules/teachers"
 	"education-flow/internal/config"
 	"education-flow/internal/database"
@@ -86,6 +88,7 @@ type Modules struct {
 	Storage                      *storages.Module
 	StorageLink                  *storagelinks.Module
 	Member                       *members.Module
+	Auth                         *auth.Module
 	Admin                        *admins.Module
 	Staff                        *staffs.Module
 	Parent                       *parents.Module
@@ -101,6 +104,7 @@ type Modules struct {
 	StudentGradeItems            *studentgradeitems.Module
 	StudentGradeRecords          *studentgraderecords.Module
 	TeacherEducations            *teachereducations.Module
+	TeacherWorkExperiences       *teacherworkexperiences.Module
 	TeacherProfileRequests       *teacherprofilerequests.Module
 	TeacherPerformanceAgreements *teacherperformanceagreements.Module
 	TeacherPDALogs               *teacherpdalogs.Module
@@ -143,6 +147,7 @@ func modulesInit() {
 	storageMod := storages.New(config.Conf[storages.Config](confMod.Svc), entitiesMod.Svc)
 	storageLinkMod := storagelinks.New(config.Conf[storagelinks.Config](confMod.Svc), entitiesMod.Svc)
 	memberMod := members.New(config.Conf[members.Config](confMod.Svc), entitiesMod.Svc)
+	authMod := auth.New(config.Conf[auth.Config](confMod.Svc), entitiesMod.Svc, conf.AppKey)
 	adminMod := admins.New(config.Conf[admins.Config](confMod.Svc), entitiesMod.Svc)
 	staffMod := staffs.New(config.Conf[staffs.Config](confMod.Svc), entitiesMod.Svc)
 	parentMod := parents.New(config.Conf[parents.Config](confMod.Svc), entitiesMod.Svc)
@@ -158,6 +163,7 @@ func modulesInit() {
 	studentGradeItemsMod := studentgradeitems.New(config.Conf[studentgradeitems.Config](confMod.Svc), entitiesMod.Svc)
 	studentGradeRecordsMod := studentgraderecords.New(config.Conf[studentgraderecords.Config](confMod.Svc), entitiesMod.Svc)
 	teacherEducationsMod := teachereducations.New(config.Conf[teachereducations.Config](confMod.Svc), entitiesMod.Svc)
+	teacherWorkExperiencesMod := teacherworkexperiences.New(config.Conf[teacherworkexperiences.Config](confMod.Svc), entitiesMod.Svc)
 	teacherProfileRequestsMod := teacherprofilerequests.New(config.Conf[teacherprofilerequests.Config](confMod.Svc), entitiesMod.Svc)
 	teacherPerformanceAgreementsMod := teacherperformanceagreements.New(config.Conf[teacherperformanceagreements.Config](confMod.Svc), entitiesMod.Svc)
 	teacherPDALogsMod := teacherpdalogs.New(config.Conf[teacherpdalogs.Config](confMod.Svc), entitiesMod.Svc)
@@ -193,6 +199,7 @@ func modulesInit() {
 		Storage:                      storageMod,
 		StorageLink:                  storageLinkMod,
 		Member:                       memberMod,
+		Auth:                         authMod,
 		Admin:                        adminMod,
 		Staff:                        staffMod,
 		Parent:                       parentMod,
@@ -208,6 +215,7 @@ func modulesInit() {
 		StudentGradeItems:            studentGradeItemsMod,
 		StudentGradeRecords:          studentGradeRecordsMod,
 		TeacherEducations:            teacherEducationsMod,
+		TeacherWorkExperiences:       teacherWorkExperiencesMod,
 		TeacherProfileRequests:       teacherProfileRequestsMod,
 		TeacherPerformanceAgreements: teacherPerformanceAgreementsMod,
 		TeacherPDALogs:               teacherPDALogsMod,

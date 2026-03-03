@@ -24,6 +24,7 @@ func (s *Service) UpdateStudentEnrollmentByID(ctx context.Context, id uuid.UUID,
 	if err := s.db.NewUpdate().
 		Model(updated).
 		Set("subject_assignment_id = ?", enrollment.SubjectAssignmentID).
+		Set("student_no = ?", enrollment.StudentNo).
 		Set("status = ?", enrollment.Status).
 		Where("id = ?", id).
 		Returning("*").

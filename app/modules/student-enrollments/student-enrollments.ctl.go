@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -27,11 +28,13 @@ func newController(trace trace.Tracer, svc *Service) *Controller {
 
 type createRequest struct {
 	SubjectAssignmentID string `json:"subject_assignment_id" binding:"required,uuid"`
+	StudentNo           *int   `json:"student_no" binding:"omitempty,min=1"`
 	Status              string `json:"status" binding:"omitempty,oneof=active dropped incomplete"`
 }
 
 type updateRequest struct {
 	SubjectAssignmentID string `json:"subject_assignment_id" binding:"required,uuid"`
+	StudentNo           *int   `json:"student_no" binding:"omitempty,min=1"`
 	Status              string `json:"status" binding:"required,oneof=active dropped incomplete"`
 }
 
@@ -39,6 +42,7 @@ type response struct {
 	ID                  string `json:"id"`
 	StudentID           string `json:"student_id"`
 	SubjectAssignmentID string `json:"subject_assignment_id"`
+	StudentNo           *int   `json:"student_no"`
 	Status              string `json:"status"`
 	CreatedAt           string `json:"created_at"`
 }
@@ -63,8 +67,12 @@ func (c *Controller) Create(ctx *gin.Context) {
 	if req.Status != "" {
 		status = ent.ToStudentEnrollmentStatus(req.Status)
 	}
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{StudentID: studentID, SubjectAssignmentID: subjectAssignmentID, Status: status})
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{StudentID: studentID, SubjectAssignmentID: subjectAssignmentID, StudentNo: req.StudentNo, Status: status})
 	if err != nil {
+		if isEnrollmentStudentNoDuplicateError(err) {
+			base.ValidateFailed(ctx, ci18n.StudentEnrollmentStudentNoDuplicate, nil)
+			return
+		}
 		log.Errf("student-enrollments.create.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
@@ -107,10 +115,14 @@ func (c *Controller) Update(ctx *gin.Context) {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
 		return
 	}
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), studentID, childID, &UpdateInput{SubjectAssignmentID: subjectAssignmentID, Status: ent.ToStudentEnrollmentStatus(req.Status)})
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), studentID, childID, &UpdateInput{SubjectAssignmentID: subjectAssignmentID, StudentNo: req.StudentNo, Status: ent.ToStudentEnrollmentStatus(req.Status)})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.StudentEnrollmentNotFound, nil)
+			return
+		}
+		if isEnrollmentStudentNoDuplicateError(err) {
+			base.ValidateFailed(ctx, ci18n.StudentEnrollmentStudentNoDuplicate, nil)
 			return
 		}
 		log.Errf("student-enrollments.update.error: %v", err)
@@ -156,5 +168,18 @@ func parseIDs(ctx *gin.Context, childRequired bool) (uuid.UUID, uuid.UUID, bool)
 }
 
 func toResponse(item *ent.StudentEnrollment) response {
-	return response{ID: item.ID.String(), StudentID: item.StudentID.String(), SubjectAssignmentID: item.SubjectAssignmentID.String(), Status: string(item.Status), CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout)}
+	return response{ID: item.ID.String(), StudentID: item.StudentID.String(), SubjectAssignmentID: item.SubjectAssignmentID.String(), StudentNo: item.StudentNo, Status: string(item.Status), CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout)}
+}
+
+func isEnrollmentStudentNoDuplicateError(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	if pgErr.Code != "23505" {
+		return false
+	}
+
+	return pgErr.ConstraintName == "uq_student_enrollments_subject_assignment_student_no"
 }

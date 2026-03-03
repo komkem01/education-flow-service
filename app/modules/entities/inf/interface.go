@@ -177,9 +177,17 @@ type DocumentTrackingEntity interface {
 type MemberEntity interface {
 	CreateMember(ctx context.Context, member *ent.Member) (*ent.Member, error)
 	GetMemberByID(ctx context.Context, id uuid.UUID) (*ent.Member, error)
+	GetMemberByEmail(ctx context.Context, email string) (*ent.Member, error)
 	UpdateMemberByID(ctx context.Context, id uuid.UUID, member *ent.Member) (*ent.Member, error)
+	UpdateMemberLastLoginByID(ctx context.Context, id uuid.UUID) error
 	DeleteMemberByID(ctx context.Context, id uuid.UUID) error
 	ListMembers(ctx context.Context, schoolID *uuid.UUID, role *ent.MemberRole, onlyActive bool) ([]*ent.Member, error)
+}
+
+type MemberRoleEntity interface {
+	AddMemberRole(ctx context.Context, memberID uuid.UUID, role ent.MemberRole) error
+	ListMemberRolesByMemberID(ctx context.Context, memberID uuid.UUID) ([]ent.MemberRole, error)
+	MemberHasAnyRole(ctx context.Context, memberID uuid.UUID, roles []ent.MemberRole) (bool, error)
 }
 
 type MemberTeacherEntity interface {
@@ -188,6 +196,7 @@ type MemberTeacherEntity interface {
 	UpdateTeacherByID(ctx context.Context, id uuid.UUID, teacher *ent.MemberTeacher) (*ent.MemberTeacher, error)
 	DeleteTeacherByID(ctx context.Context, id uuid.UUID) error
 	ListTeachers(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberTeacher, error)
+	MemberHasTeacherRole(ctx context.Context, memberID uuid.UUID) (bool, error)
 }
 
 type MemberStudentEntity interface {
@@ -214,6 +223,38 @@ type MemberAdminEntity interface {
 	DeleteAdminByID(ctx context.Context, id uuid.UUID) error
 	ListAdmins(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberAdmin, error)
 	MemberHasAdminRole(ctx context.Context, memberID uuid.UUID) (bool, error)
+}
+
+type StaffEducationEntity interface {
+	CreateStaffEducation(ctx context.Context, education *ent.StaffEducation) (*ent.StaffEducation, error)
+	UpdateStaffEducationByID(ctx context.Context, id uuid.UUID, education *ent.StaffEducation) (*ent.StaffEducation, error)
+	DeleteStaffEducationByID(ctx context.Context, id uuid.UUID) error
+	ListStaffEducationsByStaffID(ctx context.Context, staffID uuid.UUID) ([]*ent.StaffEducation, error)
+	StaffEducationBelongsToStaff(ctx context.Context, id uuid.UUID, staffID uuid.UUID) (bool, error)
+}
+
+type StaffWorkExperienceEntity interface {
+	CreateStaffWorkExperience(ctx context.Context, work *ent.StaffWorkExperience) (*ent.StaffWorkExperience, error)
+	UpdateStaffWorkExperienceByID(ctx context.Context, id uuid.UUID, work *ent.StaffWorkExperience) (*ent.StaffWorkExperience, error)
+	DeleteStaffWorkExperienceByID(ctx context.Context, id uuid.UUID) error
+	ListStaffWorkExperiencesByStaffID(ctx context.Context, staffID uuid.UUID) ([]*ent.StaffWorkExperience, error)
+	StaffWorkExperienceBelongsToStaff(ctx context.Context, id uuid.UUID, staffID uuid.UUID) (bool, error)
+}
+
+type AdminEducationEntity interface {
+	CreateAdminEducation(ctx context.Context, education *ent.AdminEducation) (*ent.AdminEducation, error)
+	UpdateAdminEducationByID(ctx context.Context, id uuid.UUID, education *ent.AdminEducation) (*ent.AdminEducation, error)
+	DeleteAdminEducationByID(ctx context.Context, id uuid.UUID) error
+	ListAdminEducationsByAdminID(ctx context.Context, adminID uuid.UUID) ([]*ent.AdminEducation, error)
+	AdminEducationBelongsToAdmin(ctx context.Context, id uuid.UUID, adminID uuid.UUID) (bool, error)
+}
+
+type AdminWorkExperienceEntity interface {
+	CreateAdminWorkExperience(ctx context.Context, work *ent.AdminWorkExperience) (*ent.AdminWorkExperience, error)
+	UpdateAdminWorkExperienceByID(ctx context.Context, id uuid.UUID, work *ent.AdminWorkExperience) (*ent.AdminWorkExperience, error)
+	DeleteAdminWorkExperienceByID(ctx context.Context, id uuid.UUID) error
+	ListAdminWorkExperiencesByAdminID(ctx context.Context, adminID uuid.UUID) ([]*ent.AdminWorkExperience, error)
+	AdminWorkExperienceBelongsToAdmin(ctx context.Context, id uuid.UUID, adminID uuid.UUID) (bool, error)
 }
 
 type MemberParentEntity interface {
@@ -312,6 +353,14 @@ type TeacherEducationEntity interface {
 	DeleteTeacherEducationByID(ctx context.Context, id uuid.UUID) error
 	ListTeacherEducationsByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherEducation, error)
 	TeacherEducationBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error)
+}
+
+type TeacherWorkExperienceEntity interface {
+	CreateTeacherWorkExperience(ctx context.Context, work *ent.TeacherWorkExperience) (*ent.TeacherWorkExperience, error)
+	UpdateTeacherWorkExperienceByID(ctx context.Context, id uuid.UUID, work *ent.TeacherWorkExperience) (*ent.TeacherWorkExperience, error)
+	DeleteTeacherWorkExperienceByID(ctx context.Context, id uuid.UUID) error
+	ListTeacherWorkExperiencesByTeacherID(ctx context.Context, teacherID uuid.UUID) ([]*ent.TeacherWorkExperience, error)
+	TeacherWorkExperienceBelongsToTeacher(ctx context.Context, id uuid.UUID, teacherID uuid.UUID) (bool, error)
 }
 
 type TeacherProfileRequestEntity interface {

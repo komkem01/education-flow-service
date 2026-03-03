@@ -73,9 +73,5 @@ func (s *Service) ListParents(ctx context.Context, memberID *uuid.UUID, onlyActi
 }
 
 func (s *Service) MemberHasParentRole(ctx context.Context, memberID uuid.UUID) (bool, error) {
-	return s.db.NewSelect().
-		Model((*ent.Member)(nil)).
-		Where("id = ?", memberID).
-		Where("role = ?", ent.MemberRoleParent).
-		Exists(ctx)
+	return s.MemberHasAnyRole(ctx, memberID, []ent.MemberRole{ent.MemberRoleParent})
 }

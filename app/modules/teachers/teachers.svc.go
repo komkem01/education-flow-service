@@ -28,6 +28,9 @@ type Service struct {
 type serviceDB interface {
 	entitiesinf.MemberTeacherEntity
 	entitiesinf.MemberEntity
+	entitiesinf.MemberRoleEntity
+	entitiesinf.TeacherEducationEntity
+	entitiesinf.TeacherWorkExperienceEntity
 }
 
 type Config struct{}
@@ -72,6 +75,25 @@ type RegisterTeacherInput struct {
 	Department              *string
 	StartDate               *time.Time
 	IsActive                bool
+	Educations              []RegisterTeacherEducationInput
+	WorkExperiences         []RegisterTeacherWorkExperienceInput
+}
+
+type RegisterTeacherEducationInput struct {
+	DegreeLevel    *string
+	DegreeName     *string
+	Major          *string
+	University     *string
+	GraduationYear *string
+}
+
+type RegisterTeacherWorkExperienceInput struct {
+	Organization *string
+	Position     *string
+	StartDate    *time.Time
+	EndDate      *time.Time
+	IsCurrent    bool
+	Description  *string
 }
 
 type ListTeachersInput struct {
@@ -79,11 +101,21 @@ type ListTeachersInput struct {
 	OnlyActive bool
 }
 
+var ErrInvalidTeacherMemberRole = errors.New("invalid-teacher-member-role")
+
 func newService(opt *Options) *Service {
 	return &Service{tracer: opt.tracer, db: opt.db}
 }
 
 func (s *Service) Create(ctx context.Context, input *CreateTeacherInput) (*ent.MemberTeacher, error) {
+	allowed, err := s.db.MemberHasTeacherRole(ctx, input.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, ErrInvalidTeacherMemberRole
+	}
+
 	teacherCode := trimStringPtr(input.TeacherCode)
 	autoGenerateCode := teacherCode == nil
 
@@ -113,6 +145,10 @@ func (s *Service) Create(ctx context.Context, input *CreateTeacherInput) (*ent.M
 
 		created, err := s.db.CreateTeacher(ctx, teacher)
 		if err == nil {
+			if roleErr := s.db.AddMemberRole(ctx, input.MemberID, ent.MemberRoleTeacher); roleErr != nil {
+				_ = s.db.DeleteTeacherByID(ctx, created.ID)
+				return nil, roleErr
+			}
 			return created, nil
 		}
 		if !(autoGenerateCode && isTeacherCodeDuplicateError(err)) {
@@ -132,6 +168,14 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.MemberTeacher
 }
 
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateTeacherInput) (*ent.MemberTeacher, error) {
+	allowed, err := s.db.MemberHasTeacherRole(ctx, input.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, ErrInvalidTeacherMemberRole
+	}
+
 	teacher := &ent.MemberTeacher{
 		MemberID:                input.MemberID,
 		GenderID:                input.GenderID,
@@ -160,6 +204,13 @@ func (s *Service) Register(ctx context.Context, input *RegisterTeacherInput) (*e
 		return nil, nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	cleanupFns := make([]func(), 0)
+	runCleanup := func() {
+		for i := len(cleanupFns) - 1; i >= 0; i-- {
+			cleanupFns[i]()
+		}
+	}
+
 	teacherCode := trimStringPtr(input.TeacherCode)
 	autoGenerateCode := teacherCode == nil
 
@@ -173,6 +224,7 @@ func (s *Service) Register(ctx context.Context, input *RegisterTeacherInput) (*e
 	if err != nil {
 		return nil, nil, err
 	}
+	cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteMemberByID(ctx, member.ID) })
 
 	teacherPayload := &ent.MemberTeacher{
 		MemberID:                member.ID,
@@ -195,7 +247,7 @@ func (s *Service) Register(ctx context.Context, input *RegisterTeacherInput) (*e
 		if autoGenerateCode {
 			code, genErr := utils.GenerateRoleCode("TCH")
 			if genErr != nil {
-				_ = s.db.DeleteMemberByID(ctx, member.ID)
+				runCleanup()
 				return nil, nil, fmt.Errorf("failed to generate teacher code: %w", genErr)
 			}
 			teacherPayload.TeacherCode = &code
@@ -203,16 +255,50 @@ func (s *Service) Register(ctx context.Context, input *RegisterTeacherInput) (*e
 
 		teacher, err = s.db.CreateTeacher(ctx, teacherPayload)
 		if err == nil {
+			cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteTeacherByID(ctx, teacher.ID) })
 			break
 		}
 		if !(autoGenerateCode && isTeacherCodeDuplicateError(err)) {
-			_ = s.db.DeleteMemberByID(ctx, member.ID)
+			runCleanup()
 			return nil, nil, err
 		}
 	}
 	if teacher == nil {
-		_ = s.db.DeleteMemberByID(ctx, member.ID)
+		runCleanup()
 		return nil, nil, fmt.Errorf("failed to create teacher after %d code retries", maxTeacherCodeGenerateRetry)
+	}
+
+	for _, educationInput := range input.Educations {
+		education, err := s.db.CreateTeacherEducation(ctx, &ent.TeacherEducation{
+			TeacherID:      teacher.ID,
+			DegreeLevel:    trimStringPtr(educationInput.DegreeLevel),
+			DegreeName:     trimStringPtr(educationInput.DegreeName),
+			Major:          trimStringPtr(educationInput.Major),
+			University:     trimStringPtr(educationInput.University),
+			GraduationYear: trimStringPtr(educationInput.GraduationYear),
+		})
+		if err != nil {
+			runCleanup()
+			return nil, nil, err
+		}
+		cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteTeacherEducationByID(ctx, education.ID) })
+	}
+
+	for _, workInput := range input.WorkExperiences {
+		work, err := s.db.CreateTeacherWorkExperience(ctx, &ent.TeacherWorkExperience{
+			TeacherID:    teacher.ID,
+			Organization: trimStringPtr(workInput.Organization),
+			Position:     trimStringPtr(workInput.Position),
+			StartDate:    workInput.StartDate,
+			EndDate:      workInput.EndDate,
+			IsCurrent:    workInput.IsCurrent,
+			Description:  trimStringPtr(workInput.Description),
+		})
+		if err != nil {
+			runCleanup()
+			return nil, nil, err
+		}
+		cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteTeacherWorkExperienceByID(ctx, work.ID) })
 	}
 
 	return member, teacher, nil

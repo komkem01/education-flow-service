@@ -24,7 +24,7 @@ type Member struct {
 	SchoolID  uuid.UUID  `bun:"school_id,type:uuid,notnull"`
 	Email     string     `bun:"email,notnull"`
 	Password  string     `bun:"password,notnull"`
-	Role      MemberRole `bun:"role,notnull"`
+	Role      MemberRole `bun:"-"`
 	IsActive  bool       `bun:"is_active,notnull"`
 	LastLogin *time.Time `bun:"last_login"`
 	CreatedAt time.Time  `bun:"created_at,nullzero,notnull,default:current_timestamp"`

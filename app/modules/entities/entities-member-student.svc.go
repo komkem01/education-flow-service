@@ -38,6 +38,7 @@ func (s *Service) UpdateStudentByID(ctx context.Context, id uuid.UUID, student *
 		Set("advisor_teacher_id = ?", student.AdvisorTeacherID).
 		Set("current_classroom_id = ?", student.CurrentClassroomID).
 		Set("student_code = ?", student.StudentCode).
+		Set("default_student_no = ?", student.DefaultStudentNo).
 		Set("first_name = ?", student.FirstName).
 		Set("last_name = ?", student.LastName).
 		Set("citizen_id = ?", student.CitizenID).

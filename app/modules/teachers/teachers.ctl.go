@@ -66,6 +66,25 @@ type registerTeacherRequest struct {
 	Department              *string `json:"department" binding:"omitempty,max=255"`
 	StartDate               *string `json:"start_date" binding:"omitempty,datetime=2006-01-02"`
 	IsActive                *bool   `json:"is_active"`
+	Educations              []registerTeacherEducationRequest     `json:"educations" binding:"required,min=1,dive"`
+	WorkExperiences         []registerTeacherWorkExperienceRequest `json:"work_experiences" binding:"required,min=1,dive"`
+}
+
+type registerTeacherEducationRequest struct {
+	DegreeLevel    *string `json:"degree_level" binding:"omitempty,max=100"`
+	DegreeName     *string `json:"degree_name" binding:"omitempty,max=255"`
+	Major          *string `json:"major" binding:"omitempty,max=255"`
+	University     *string `json:"university" binding:"omitempty,max=255"`
+	GraduationYear *string `json:"graduation_year" binding:"omitempty,max=10"`
+}
+
+type registerTeacherWorkExperienceRequest struct {
+	Organization *string `json:"organization" binding:"omitempty,max=255"`
+	Position     *string `json:"position" binding:"omitempty,max=255"`
+	StartDate    *string `json:"start_date" binding:"omitempty,datetime=2006-01-02"`
+	EndDate      *string `json:"end_date" binding:"omitempty,datetime=2006-01-02"`
+	IsCurrent    *bool   `json:"is_current"`
+	Description  *string `json:"description"`
 }
 
 type teacherResponse struct {
@@ -128,6 +147,49 @@ func (c *Controller) Register(ctx *gin.Context) {
 		return
 	}
 
+	educations := make([]RegisterTeacherEducationInput, 0, len(req.Educations))
+	for _, item := range req.Educations {
+		educations = append(educations, RegisterTeacherEducationInput{
+			DegreeLevel:    item.DegreeLevel,
+			DegreeName:     item.DegreeName,
+			Major:          item.Major,
+			University:     item.University,
+			GraduationYear: item.GraduationYear,
+		})
+	}
+
+	workExperiences := make([]RegisterTeacherWorkExperienceInput, 0, len(req.WorkExperiences))
+	for _, item := range req.WorkExperiences {
+		workStartDate, err := parseDatePtr(item.StartDate)
+		if err != nil {
+			base.BadRequest(ctx, ci18n.BadRequest, nil)
+			return
+		}
+		workEndDate, err := parseDatePtr(item.EndDate)
+		if err != nil {
+			base.BadRequest(ctx, ci18n.BadRequest, nil)
+			return
+		}
+		if workStartDate != nil && workEndDate != nil && workEndDate.Before(*workStartDate) {
+			base.ValidateFailed(ctx, ci18n.TeacherInvalidDateRange, nil)
+			return
+		}
+
+		isCurrent := false
+		if item.IsCurrent != nil {
+			isCurrent = *item.IsCurrent
+		}
+
+		workExperiences = append(workExperiences, RegisterTeacherWorkExperienceInput{
+			Organization: item.Organization,
+			Position:     item.Position,
+			StartDate:    workStartDate,
+			EndDate:      workEndDate,
+			IsCurrent:    isCurrent,
+			Description:  item.Description,
+		})
+	}
+
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
@@ -149,8 +211,14 @@ func (c *Controller) Register(ctx *gin.Context) {
 		Department:              req.Department,
 		StartDate:               startDate,
 		IsActive:                isActive,
+		Educations:              educations,
+		WorkExperiences:         workExperiences,
 	})
 	if err != nil {
+		if isTeacherCodeDuplicateKeyError(err) {
+			base.ValidateFailed(ctx, ci18n.TeacherCodeDuplicate, nil)
+			return
+		}
 		if isDuplicateKeyError(err) {
 			base.ValidateFailed(ctx, ci18n.MemberEmailDuplicate, nil)
 			return
@@ -183,6 +251,10 @@ func (c *Controller) Create(ctx *gin.Context) {
 	}
 	teacher, err := c.svc.Create(ctx.Request.Context(), &CreateTeacherInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, TeacherCode: req.TeacherCode, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, CurrentPosition: req.CurrentPosition, CurrentAcademicStanding: req.CurrentAcademicStanding, Department: req.Department, StartDate: startDate, IsActive: isActive})
 	if err != nil {
+		if errors.Is(err, ErrInvalidTeacherMemberRole) {
+			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
 		if isDuplicateKeyError(err) {
 			base.ValidateFailed(ctx, ci18n.TeacherCodeDuplicate, nil)
 			return
@@ -263,6 +335,10 @@ func (c *Controller) Update(ctx *gin.Context) {
 	}
 	teacher, err := c.svc.UpdateByID(ctx.Request.Context(), teacherID, &UpdateTeacherInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, TeacherCode: req.TeacherCode, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, CurrentPosition: req.CurrentPosition, CurrentAcademicStanding: req.CurrentAcademicStanding, Department: req.Department, StartDate: startDate, IsActive: isActive})
 	if err != nil {
+		if errors.Is(err, ErrInvalidTeacherMemberRole) {
+			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.TeacherNotFound, nil)
 			return
@@ -388,4 +464,18 @@ func isDuplicateKeyError(err error) bool {
 		return pgErr.Code == "23505"
 	}
 	return false
+}
+
+func isTeacherCodeDuplicateKeyError(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	if pgErr.Code != "23505" {
+		return false
+	}
+
+	constraint := pgErr.ConstraintName
+	return constraint == "uq_member_teachers_teacher_code" || constraint == "member_teachers_teacher_code_key"
 }

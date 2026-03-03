@@ -17,6 +17,7 @@ type MemberStudent struct {
 	AdvisorTeacherID   *uuid.UUID `bun:"advisor_teacher_id,type:uuid"`
 	CurrentClassroomID *uuid.UUID `bun:"current_classroom_id,type:uuid"`
 	StudentCode        *string    `bun:"student_code"`
+	DefaultStudentNo   *int       `bun:"default_student_no"`
 	FirstName          *string    `bun:"first_name"`
 	LastName           *string    `bun:"last_name"`
 	CitizenID          *string    `bun:"citizen_id"`

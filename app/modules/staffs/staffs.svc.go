@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"education-flow/app/modules/entities/ent"
 	entitiesinf "education-flow/app/modules/entities/inf"
@@ -27,6 +28,8 @@ type Service struct {
 type serviceDB interface {
 	entitiesinf.MemberStaffEntity
 	entitiesinf.MemberEntity
+	entitiesinf.StaffEducationEntity
+	entitiesinf.StaffWorkExperienceEntity
 }
 
 type Config struct{}
@@ -52,17 +55,36 @@ type CreateStaffInput struct {
 type UpdateStaffInput = CreateStaffInput
 
 type RegisterStaffInput struct {
-	SchoolID   uuid.UUID
-	Email      string
-	Password   string
-	GenderID   *uuid.UUID
-	PrefixID   *uuid.UUID
-	StaffCode  *string
-	FirstName  *string
-	LastName   *string
-	Phone      *string
-	Department *string
-	IsActive   bool
+	SchoolID        uuid.UUID
+	Email           string
+	Password        string
+	GenderID        *uuid.UUID
+	PrefixID        *uuid.UUID
+	StaffCode       *string
+	FirstName       *string
+	LastName        *string
+	Phone           *string
+	Department      *string
+	IsActive        bool
+	Educations      []RegisterStaffEducationInput
+	WorkExperiences []RegisterStaffWorkExperienceInput
+}
+
+type RegisterStaffEducationInput struct {
+	DegreeLevel    *string
+	DegreeName     *string
+	Major          *string
+	University     *string
+	GraduationYear *string
+}
+
+type RegisterStaffWorkExperienceInput struct {
+	Organization *string
+	Position     *string
+	StartDate    *time.Time
+	EndDate      *time.Time
+	IsCurrent    bool
+	Description  *string
 }
 
 type ListStaffsInput struct {
@@ -162,6 +184,13 @@ func (s *Service) Register(ctx context.Context, input *RegisterStaffInput) (*ent
 		return nil, nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	cleanupFns := make([]func(), 0)
+	runCleanup := func() {
+		for i := len(cleanupFns) - 1; i >= 0; i-- {
+			cleanupFns[i]()
+		}
+	}
+
 	staffCode := trimStringPtr(input.StaffCode)
 	autoGenerateCode := staffCode == nil
 
@@ -175,6 +204,7 @@ func (s *Service) Register(ctx context.Context, input *RegisterStaffInput) (*ent
 	if err != nil {
 		return nil, nil, err
 	}
+	cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteMemberByID(ctx, member.ID) })
 
 	staffPayload := &ent.MemberStaff{
 		MemberID:   member.ID,
@@ -193,7 +223,7 @@ func (s *Service) Register(ctx context.Context, input *RegisterStaffInput) (*ent
 		if autoGenerateCode {
 			code, genErr := utils.GenerateRoleCode("STF")
 			if genErr != nil {
-				_ = s.db.DeleteMemberByID(ctx, member.ID)
+				runCleanup()
 				return nil, nil, fmt.Errorf("failed to generate staff code: %w", genErr)
 			}
 			staffPayload.StaffCode = &code
@@ -201,16 +231,50 @@ func (s *Service) Register(ctx context.Context, input *RegisterStaffInput) (*ent
 
 		staff, err = s.db.CreateStaff(ctx, staffPayload)
 		if err == nil {
+			cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteStaffByID(ctx, staff.ID) })
 			break
 		}
 		if !(autoGenerateCode && isStaffCodeDuplicateError(err)) {
-			_ = s.db.DeleteMemberByID(ctx, member.ID)
+			runCleanup()
 			return nil, nil, err
 		}
 	}
 	if staff == nil {
-		_ = s.db.DeleteMemberByID(ctx, member.ID)
+		runCleanup()
 		return nil, nil, fmt.Errorf("failed to create staff after %d code retries", maxStaffCodeGenerateRetry)
+	}
+
+	for _, educationInput := range input.Educations {
+		education, err := s.db.CreateStaffEducation(ctx, &ent.StaffEducation{
+			StaffID:        staff.ID,
+			DegreeLevel:    trimStringPtr(educationInput.DegreeLevel),
+			DegreeName:     trimStringPtr(educationInput.DegreeName),
+			Major:          trimStringPtr(educationInput.Major),
+			University:     trimStringPtr(educationInput.University),
+			GraduationYear: trimStringPtr(educationInput.GraduationYear),
+		})
+		if err != nil {
+			runCleanup()
+			return nil, nil, err
+		}
+		cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteStaffEducationByID(ctx, education.ID) })
+	}
+
+	for _, workInput := range input.WorkExperiences {
+		work, err := s.db.CreateStaffWorkExperience(ctx, &ent.StaffWorkExperience{
+			StaffID:      staff.ID,
+			Organization: trimStringPtr(workInput.Organization),
+			Position:     trimStringPtr(workInput.Position),
+			StartDate:    workInput.StartDate,
+			EndDate:      workInput.EndDate,
+			IsCurrent:    workInput.IsCurrent,
+			Description:  trimStringPtr(workInput.Description),
+		})
+		if err != nil {
+			runCleanup()
+			return nil, nil, err
+		}
+		cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteStaffWorkExperienceByID(ctx, work.ID) })
 	}
 
 	return member, staff, nil

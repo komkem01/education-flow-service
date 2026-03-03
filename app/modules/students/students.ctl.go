@@ -32,6 +32,7 @@ type createStudentRequest struct {
 	AdvisorTeacherID   *string `json:"advisor_teacher_id" binding:"omitempty,uuid"`
 	CurrentClassroomID *string `json:"current_classroom_id" binding:"omitempty,uuid"`
 	StudentCode        *string `json:"student_code" binding:"omitempty,max=255"`
+	DefaultStudentNo   *int    `json:"default_student_no" binding:"omitempty,min=1"`
 	FirstName          *string `json:"first_name" binding:"omitempty,max=255"`
 	LastName           *string `json:"last_name" binding:"omitempty,max=255"`
 	CitizenID          *string `json:"citizen_id" binding:"omitempty,max=13"`
@@ -50,11 +51,27 @@ type registerStudentRequest struct {
 	AdvisorTeacherID   *string `json:"advisor_teacher_id" binding:"omitempty,uuid"`
 	CurrentClassroomID *string `json:"current_classroom_id" binding:"omitempty,uuid"`
 	StudentCode        *string `json:"student_code" binding:"omitempty,max=255"`
+	DefaultStudentNo   *int    `json:"default_student_no" binding:"omitempty,min=1"`
 	FirstName          *string `json:"first_name" binding:"omitempty,max=255"`
 	LastName           *string `json:"last_name" binding:"omitempty,max=255"`
 	CitizenID          *string `json:"citizen_id" binding:"omitempty,max=13"`
 	Phone              *string `json:"phone" binding:"omitempty,max=50"`
 	IsActive           *bool   `json:"is_active"`
+	Parent             *registerStudentParentRequest `json:"parent" binding:"omitempty"`
+}
+
+type registerStudentParentRequest struct {
+	Email          string  `json:"email" binding:"required,email,max=255"`
+	Password       string  `json:"password" binding:"required,min=6,max=255"`
+	GenderID       *string `json:"gender_id" binding:"omitempty,uuid"`
+	PrefixID       *string `json:"prefix_id" binding:"omitempty,uuid"`
+	ParentCode     *string `json:"parent_code" binding:"omitempty,max=255"`
+	FirstName      *string `json:"first_name" binding:"omitempty,max=255"`
+	LastName       *string `json:"last_name" binding:"omitempty,max=255"`
+	Phone          *string `json:"phone" binding:"omitempty,max=50"`
+	Relationship   string  `json:"relationship" binding:"omitempty,oneof=father mother guardian"`
+	IsMainGuardian *bool   `json:"is_main_guardian"`
+	IsActive       *bool   `json:"is_active"`
 }
 
 type studentResponse struct {
@@ -65,6 +82,7 @@ type studentResponse struct {
 	AdvisorTeacherID   *string `json:"advisor_teacher_id"`
 	CurrentClassroomID *string `json:"current_classroom_id"`
 	StudentCode        *string `json:"student_code"`
+	DefaultStudentNo   *int    `json:"default_student_no"`
 	FirstName          *string `json:"first_name"`
 	LastName           *string `json:"last_name"`
 	CitizenID          *string `json:"citizen_id"`
@@ -75,6 +93,26 @@ type studentResponse struct {
 type registerStudentResponse struct {
 	Member memberRegisterResponse `json:"member"`
 	Student studentResponse       `json:"student"`
+	Parent *registerParentResponse `json:"parent,omitempty"`
+}
+
+type registerParentResponse struct {
+	Member memberRegisterResponse `json:"member"`
+	Parent parentResponseLite     `json:"parent"`
+	Relationship string           `json:"relationship"`
+	IsMainGuardian bool           `json:"is_main_guardian"`
+}
+
+type parentResponseLite struct {
+	ID         string  `json:"id"`
+	MemberID   string  `json:"member_id"`
+	GenderID   *string `json:"gender_id"`
+	PrefixID   *string `json:"prefix_id"`
+	ParentCode *string `json:"parent_code"`
+	FirstName  *string `json:"first_name"`
+	LastName   *string `json:"last_name"`
+	Phone      *string `json:"phone"`
+	IsActive   bool    `json:"is_active"`
 }
 
 type memberRegisterResponse struct {
@@ -120,12 +158,17 @@ func (c *Controller) Register(ctx *gin.Context) {
 		return
 	}
 
+	parentInput, ok := parseRegisterParentInput(ctx, req.Parent)
+	if !ok {
+		return
+	}
+
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
 
-	member, student, err := c.svc.Register(ctx.Request.Context(), &RegisterStudentInput{
+	result, err := c.svc.Register(ctx.Request.Context(), &RegisterStudentInput{
 		SchoolID:           schoolID,
 		Email:              req.Email,
 		Password:           req.Password,
@@ -134,11 +177,13 @@ func (c *Controller) Register(ctx *gin.Context) {
 		AdvisorTeacherID:   advisorTeacherID,
 		CurrentClassroomID: currentClassroomID,
 		StudentCode:        req.StudentCode,
+		DefaultStudentNo:   req.DefaultStudentNo,
 		FirstName:          req.FirstName,
 		LastName:           req.LastName,
 		CitizenID:          req.CitizenID,
 		Phone:              req.Phone,
 		IsActive:           isActive,
+		Parent:             parentInput,
 	})
 	if err != nil {
 		if isDuplicateKeyError(err) {
@@ -150,10 +195,20 @@ func (c *Controller) Register(ctx *gin.Context) {
 		return
 	}
 
-	base.Success(ctx, registerStudentResponse{
-		Member: toMemberRegisterResponse(member),
-		Student: toStudentResponse(student),
-	})
+	response := registerStudentResponse{
+		Member:  toMemberRegisterResponse(result.StudentMember),
+		Student: toStudentResponse(result.Student),
+	}
+	if result.ParentMember != nil && result.Parent != nil && result.ParentStudent != nil {
+		response.Parent = &registerParentResponse{
+			Member:         toMemberRegisterResponse(result.ParentMember),
+			Parent:         toParentResponseLite(result.Parent),
+			Relationship:   string(result.ParentStudent.Relationship),
+			IsMainGuardian: result.ParentStudent.IsMainGuardian,
+		}
+	}
+
+	base.Success(ctx, response)
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -171,7 +226,7 @@ func (c *Controller) Create(ctx *gin.Context) {
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
-	student, err := c.svc.Create(ctx.Request.Context(), &CreateStudentInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, AdvisorTeacherID: advisorTeacherID, CurrentClassroomID: currentClassroomID, StudentCode: req.StudentCode, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, IsActive: isActive})
+	student, err := c.svc.Create(ctx.Request.Context(), &CreateStudentInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, AdvisorTeacherID: advisorTeacherID, CurrentClassroomID: currentClassroomID, StudentCode: req.StudentCode, DefaultStudentNo: req.DefaultStudentNo, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, IsActive: isActive})
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			base.ValidateFailed(ctx, ci18n.StudentCodeDuplicate, nil)
@@ -257,7 +312,7 @@ func (c *Controller) Update(ctx *gin.Context) {
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
-	student, err := c.svc.UpdateByID(ctx.Request.Context(), studentID, &UpdateStudentInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, AdvisorTeacherID: advisorTeacherID, CurrentClassroomID: currentClassroomID, StudentCode: req.StudentCode, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, IsActive: isActive})
+	student, err := c.svc.UpdateByID(ctx.Request.Context(), studentID, &UpdateStudentInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, AdvisorTeacherID: advisorTeacherID, CurrentClassroomID: currentClassroomID, StudentCode: req.StudentCode, DefaultStudentNo: req.DefaultStudentNo, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.StudentNotFound, nil)
@@ -327,7 +382,7 @@ func parseStudentCreateUpdateFields(ctx *gin.Context, memberIDRaw string, gender
 }
 
 func toStudentResponse(student *ent.MemberStudent) studentResponse {
-	return studentResponse{ID: student.ID.String(), MemberID: student.MemberID.String(), GenderID: utils.UUIDToStringPtr(student.GenderID), PrefixID: utils.UUIDToStringPtr(student.PrefixID), AdvisorTeacherID: utils.UUIDToStringPtr(student.AdvisorTeacherID), CurrentClassroomID: utils.UUIDToStringPtr(student.CurrentClassroomID), StudentCode: student.StudentCode, FirstName: student.FirstName, LastName: student.LastName, CitizenID: student.CitizenID, Phone: student.Phone, IsActive: student.IsActive}
+	return studentResponse{ID: student.ID.String(), MemberID: student.MemberID.String(), GenderID: utils.UUIDToStringPtr(student.GenderID), PrefixID: utils.UUIDToStringPtr(student.PrefixID), AdvisorTeacherID: utils.UUIDToStringPtr(student.AdvisorTeacherID), CurrentClassroomID: utils.UUIDToStringPtr(student.CurrentClassroomID), StudentCode: student.StudentCode, DefaultStudentNo: student.DefaultStudentNo, FirstName: student.FirstName, LastName: student.LastName, CitizenID: student.CitizenID, Phone: student.Phone, IsActive: student.IsActive}
 }
 
 func isDuplicateKeyError(err error) bool {
@@ -346,4 +401,64 @@ func toMemberRegisterResponse(member *ent.Member) memberRegisterResponse {
 		Role:     string(member.Role),
 		IsActive: member.IsActive,
 	}
+}
+
+func toParentResponseLite(parent *ent.MemberParent) parentResponseLite {
+	return parentResponseLite{
+		ID:         parent.ID.String(),
+		MemberID:   parent.MemberID.String(),
+		GenderID:   utils.UUIDToStringPtr(parent.GenderID),
+		PrefixID:   utils.UUIDToStringPtr(parent.PrefixID),
+		ParentCode: parent.ParentCode,
+		FirstName:  parent.FirstName,
+		LastName:   parent.LastName,
+		Phone:      parent.Phone,
+		IsActive:   parent.IsActive,
+	}
+}
+
+func parseRegisterParentInput(ctx *gin.Context, req *registerStudentParentRequest) (*RegisterParentInput, bool) {
+	if req == nil {
+		return nil, true
+	}
+
+	genderID, err := utils.ParseUUIDPtr(req.GenderID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return nil, false
+	}
+	prefixID, err := utils.ParseUUIDPtr(req.PrefixID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return nil, false
+	}
+
+	relationship := ent.ParentRelationshipGuardian
+	if req.Relationship != "" {
+		relationship = ent.ToParentRelationship(req.Relationship)
+	}
+
+	isMainGuardian := true
+	if req.IsMainGuardian != nil {
+		isMainGuardian = *req.IsMainGuardian
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	return &RegisterParentInput{
+		Email:          req.Email,
+		Password:       req.Password,
+		GenderID:       genderID,
+		PrefixID:       prefixID,
+		ParentCode:     req.ParentCode,
+		FirstName:      req.FirstName,
+		LastName:       req.LastName,
+		Phone:          req.Phone,
+		Relationship:   relationship,
+		IsMainGuardian: isMainGuardian,
+		IsActive:       isActive,
+	}, true
 }

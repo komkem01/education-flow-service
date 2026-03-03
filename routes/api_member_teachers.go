@@ -2,32 +2,54 @@ package routes
 
 import (
 	"education-flow/app/modules"
+	"education-flow/app/modules/entities/ent"
 
 	"github.com/gin-gonic/gin"
 )
 
 func apiMemberTeachers(r *gin.RouterGroup, mod *modules.Modules) {
 	r.POST("/teachers/register", mod.Teacher.Ctl.Register)
-	registerCRUD(r, "/teachers", mod.Teacher.Ctl.List, mod.Teacher.Ctl.Get, mod.Teacher.Ctl.Create, mod.Teacher.Ctl.Update, mod.Teacher.Ctl.Delete)
 
-	r.GET("/teachers/:id/educations", mod.TeacherEducations.Ctl.List)
-	r.POST("/teachers/:id/educations", mod.TeacherEducations.Ctl.Create)
-	r.PATCH("/teachers/:id/educations/:child_id", mod.TeacherEducations.Ctl.Update)
-	r.DELETE("/teachers/:id/educations/:child_id", mod.TeacherEducations.Ctl.Delete)
+	protected := r.Group("")
+	protected.Use(requireAuth(mod), requireRoles(ent.MemberRoleAdmin, ent.MemberRoleStaff, ent.MemberRoleTeacher))
 
-	r.GET("/teachers/:id/profile-requests", mod.TeacherProfileRequests.Ctl.List)
-	r.POST("/teachers/:id/profile-requests", mod.TeacherProfileRequests.Ctl.Create)
-	r.PATCH("/teachers/:id/profile-requests/:child_id", mod.TeacherProfileRequests.Ctl.Update)
+	protected.GET("/teachers", mod.Teacher.Ctl.List)
+	protected.POST("/teachers", mod.Teacher.Ctl.Create)
 
-	r.GET("/teachers/:id/performance-agreements", mod.TeacherPerformanceAgreements.Ctl.List)
-	r.POST("/teachers/:id/performance-agreements", mod.TeacherPerformanceAgreements.Ctl.Create)
-	r.PATCH("/teachers/:id/performance-agreements/:child_id", mod.TeacherPerformanceAgreements.Ctl.Update)
+	teacherOwned := protected.Group("/teachers/:id")
+	teacherOwned.Use(requireTeacherResourceOwnerOrRoles(mod, ent.MemberRoleAdmin, ent.MemberRoleStaff))
+	teacherOwned.GET("", mod.Teacher.Ctl.Get)
+	teacherOwned.PATCH("", mod.Teacher.Ctl.Update)
+	teacherOwned.DELETE("", mod.Teacher.Ctl.Delete)
 
-	r.GET("/teachers/:id/pda-logs", mod.TeacherPDALogs.Ctl.List)
-	r.POST("/teachers/:id/pda-logs", mod.TeacherPDALogs.Ctl.Create)
-	r.DELETE("/teachers/:id/pda-logs/:child_id", mod.TeacherPDALogs.Ctl.Delete)
+	teacherOwned.GET("/educations", mod.TeacherEducations.Ctl.List)
+	teacherOwned.POST("/educations", mod.TeacherEducations.Ctl.Create)
+	teacherOwned.PATCH("/educations/:child_id", mod.TeacherEducations.Ctl.Update)
+	teacherOwned.DELETE("/educations/:child_id", mod.TeacherEducations.Ctl.Delete)
 
-	r.GET("/teachers/:id/leave-logs", mod.TeacherLeaveLogs.Ctl.List)
-	r.POST("/teachers/:id/leave-logs", mod.TeacherLeaveLogs.Ctl.Create)
-	r.PATCH("/teachers/:id/leave-logs/:child_id", mod.TeacherLeaveLogs.Ctl.Update)
+	teacherOwned.GET("/work-experiences", mod.TeacherWorkExperiences.Ctl.List)
+	teacherOwned.POST("/work-experiences", mod.TeacherWorkExperiences.Ctl.Create)
+	teacherOwned.PATCH("/work-experiences/:child_id", mod.TeacherWorkExperiences.Ctl.Update)
+	teacherOwned.DELETE("/work-experiences/:child_id", mod.TeacherWorkExperiences.Ctl.Delete)
+
+	teacherOwned.GET("/profile-requests", mod.TeacherProfileRequests.Ctl.List)
+	teacherOwned.POST("/profile-requests", mod.TeacherProfileRequests.Ctl.Create)
+	teacherOwned.PATCH("/profile-requests/:child_id", mod.TeacherProfileRequests.Ctl.Update)
+
+	teacherOwned.GET("/performance-agreements", mod.TeacherPerformanceAgreements.Ctl.List)
+	teacherOwned.POST("/performance-agreements", mod.TeacherPerformanceAgreements.Ctl.Create)
+	teacherOwned.PATCH("/performance-agreements/:child_id", mod.TeacherPerformanceAgreements.Ctl.Update)
+
+	teacherOwned.GET("/pda-logs", mod.TeacherPDALogs.Ctl.List)
+	teacherOwned.POST("/pda-logs", mod.TeacherPDALogs.Ctl.Create)
+	teacherOwned.DELETE("/pda-logs/:child_id", mod.TeacherPDALogs.Ctl.Delete)
+
+	teacherOwned.GET("/leave-logs", mod.TeacherLeaveLogs.Ctl.List)
+	teacherOwned.POST("/leave-logs", mod.TeacherLeaveLogs.Ctl.Create)
+	teacherOwned.PATCH("/leave-logs/:child_id", mod.TeacherLeaveLogs.Ctl.Update)
+
+	teacherOwned.GET("/subject-assignments", mod.SubjectAssignment.Ctl.ListByTeacher)
+	teacherOwned.POST("/subject-assignments", mod.SubjectAssignment.Ctl.CreateByTeacher)
+	teacherOwned.PATCH("/subject-assignments/:child_id", mod.SubjectAssignment.Ctl.UpdateByTeacher)
+	teacherOwned.DELETE("/subject-assignments/:child_id", mod.SubjectAssignment.Ctl.DeleteByTeacher)
 }

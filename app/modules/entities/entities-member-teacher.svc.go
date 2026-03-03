@@ -77,3 +77,7 @@ func (s *Service) ListTeachers(ctx context.Context, memberID *uuid.UUID, onlyAct
 
 	return teachers, nil
 }
+
+func (s *Service) MemberHasTeacherRole(ctx context.Context, memberID uuid.UUID) (bool, error) {
+	return s.MemberHasAnyRole(ctx, memberID, []ent.MemberRole{ent.MemberRoleTeacher, ent.MemberRoleStaff})
+}
