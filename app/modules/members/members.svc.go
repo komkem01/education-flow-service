@@ -2,10 +2,12 @@ package members
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"education-flow/app/modules/entities/ent"
 	entitiesinf "education-flow/app/modules/entities/inf"
+	"education-flow/app/utils/hashing"
 	"education-flow/internal/config"
 
 	"github.com/google/uuid"
@@ -55,10 +57,15 @@ func newService(opt *Options) *Service {
 }
 
 func (s *Service) Create(ctx context.Context, input *CreateMemberInput) (*ent.Member, error) {
+	hashedPassword, err := hashing.HashPasswordString(strings.TrimSpace(input.Password))
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
 	member := &ent.Member{
 		SchoolID: input.SchoolID,
 		Email:    strings.TrimSpace(strings.ToLower(input.Email)),
-		Password: strings.TrimSpace(input.Password),
+		Password: hashedPassword,
 		Role:     input.Role,
 		IsActive: input.IsActive,
 	}
@@ -75,10 +82,15 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.Member, error
 }
 
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateMemberInput) (*ent.Member, error) {
+	hashedPassword, err := hashing.HashPasswordString(strings.TrimSpace(input.Password))
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
 	member := &ent.Member{
 		SchoolID: input.SchoolID,
 		Email:    strings.TrimSpace(strings.ToLower(input.Email)),
-		Password: strings.TrimSpace(input.Password),
+		Password: hashedPassword,
 		Role:     input.Role,
 		IsActive: input.IsActive,
 	}

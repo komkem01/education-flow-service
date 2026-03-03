@@ -7,6 +7,7 @@ import (
 )
 
 func apiMemberStaffs(r *gin.RouterGroup, mod *modules.Modules) {
+	r.POST("/staffs/register", mod.Staff.Ctl.Register)
 	registerCRUD(r, "/staffs", mod.Staff.Ctl.List, mod.Staff.Ctl.Get, mod.Staff.Ctl.Create, mod.Staff.Ctl.Update, mod.Staff.Ctl.Delete)
 	registerCRUD(r, "/inventory-items", mod.InventoryItem.Ctl.List, mod.InventoryItem.Ctl.Get, mod.InventoryItem.Ctl.Create, mod.InventoryItem.Ctl.Update, mod.InventoryItem.Ctl.Delete)
 	registerCRUD(r, "/inventory-requests", mod.InventoryRequest.Ctl.List, mod.InventoryRequest.Ctl.Get, mod.InventoryRequest.Ctl.Create, mod.InventoryRequest.Ctl.Update, mod.InventoryRequest.Ctl.Delete)

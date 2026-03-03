@@ -7,6 +7,7 @@ import (
 )
 
 func apiMemberStudents(r *gin.RouterGroup, mod *modules.Modules) {
+	r.POST("/students/register", mod.Student.Ctl.Register)
 	registerCRUD(r, "/students", mod.Student.Ctl.List, mod.Student.Ctl.Get, mod.Student.Ctl.Create, mod.Student.Ctl.Update, mod.Student.Ctl.Delete)
 
 	r.GET("/students/:id/enrollments", mod.StudentEnrollments.Ctl.List)

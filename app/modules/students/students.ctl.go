@@ -41,6 +41,22 @@ type createStudentRequest struct {
 
 type updateStudentRequest = createStudentRequest
 
+type registerStudentRequest struct {
+	SchoolID           string  `json:"school_id" binding:"required,uuid"`
+	Email              string  `json:"email" binding:"required,email,max=255"`
+	Password           string  `json:"password" binding:"required,min=6,max=255"`
+	GenderID           *string `json:"gender_id" binding:"omitempty,uuid"`
+	PrefixID           *string `json:"prefix_id" binding:"omitempty,uuid"`
+	AdvisorTeacherID   *string `json:"advisor_teacher_id" binding:"omitempty,uuid"`
+	CurrentClassroomID *string `json:"current_classroom_id" binding:"omitempty,uuid"`
+	StudentCode        *string `json:"student_code" binding:"omitempty,max=255"`
+	FirstName          *string `json:"first_name" binding:"omitempty,max=255"`
+	LastName           *string `json:"last_name" binding:"omitempty,max=255"`
+	CitizenID          *string `json:"citizen_id" binding:"omitempty,max=13"`
+	Phone              *string `json:"phone" binding:"omitempty,max=50"`
+	IsActive           *bool   `json:"is_active"`
+}
+
 type studentResponse struct {
 	ID                 string  `json:"id"`
 	MemberID           string  `json:"member_id"`
@@ -54,6 +70,90 @@ type studentResponse struct {
 	CitizenID          *string `json:"citizen_id"`
 	Phone              *string `json:"phone"`
 	IsActive           bool    `json:"is_active"`
+}
+
+type registerStudentResponse struct {
+	Member memberRegisterResponse `json:"member"`
+	Student studentResponse       `json:"student"`
+}
+
+type memberRegisterResponse struct {
+	ID       string `json:"id"`
+	SchoolID string `json:"school_id"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	IsActive bool   `json:"is_active"`
+}
+
+func (c *Controller) Register(ctx *gin.Context) {
+	_, log := utils.LogSpanFromGin(ctx)
+	var req registerStudentRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
+
+	schoolID, err := uuid.Parse(req.SchoolID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	genderID, err := utils.ParseUUIDPtr(req.GenderID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	prefixID, err := utils.ParseUUIDPtr(req.PrefixID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	advisorTeacherID, err := utils.ParseUUIDPtr(req.AdvisorTeacherID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	currentClassroomID, err := utils.ParseUUIDPtr(req.CurrentClassroomID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	member, student, err := c.svc.Register(ctx.Request.Context(), &RegisterStudentInput{
+		SchoolID:           schoolID,
+		Email:              req.Email,
+		Password:           req.Password,
+		GenderID:           genderID,
+		PrefixID:           prefixID,
+		AdvisorTeacherID:   advisorTeacherID,
+		CurrentClassroomID: currentClassroomID,
+		StudentCode:        req.StudentCode,
+		FirstName:          req.FirstName,
+		LastName:           req.LastName,
+		CitizenID:          req.CitizenID,
+		Phone:              req.Phone,
+		IsActive:           isActive,
+	})
+	if err != nil {
+		if isDuplicateKeyError(err) {
+			base.ValidateFailed(ctx, ci18n.MemberEmailDuplicate, nil)
+			return
+		}
+		log.Errf("students.register.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
+	base.Success(ctx, registerStudentResponse{
+		Member: toMemberRegisterResponse(member),
+		Student: toStudentResponse(student),
+	})
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -236,4 +336,14 @@ func isDuplicateKeyError(err error) bool {
 		return pgErr.Code == "23505"
 	}
 	return false
+}
+
+func toMemberRegisterResponse(member *ent.Member) memberRegisterResponse {
+	return memberRegisterResponse{
+		ID:       member.ID.String(),
+		SchoolID: member.SchoolID.String(),
+		Email:    member.Email,
+		Role:     string(member.Role),
+		IsActive: member.IsActive,
+	}
 }

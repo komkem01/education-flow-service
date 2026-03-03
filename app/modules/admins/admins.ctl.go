@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -36,15 +37,98 @@ type createAdminRequest struct {
 
 type updateAdminRequest = createAdminRequest
 
+type registerAdminRequest struct {
+	SchoolID  string  `json:"school_id" binding:"required,uuid"`
+	Email     string  `json:"email" binding:"required,email,max=255"`
+	Password  string  `json:"password" binding:"required,min=6,max=255"`
+	GenderID  *string `json:"gender_id" binding:"omitempty,uuid"`
+	PrefixID  *string `json:"prefix_id" binding:"omitempty,uuid"`
+	FirstName *string `json:"first_name" binding:"omitempty,max=255"`
+	LastName  *string `json:"last_name" binding:"omitempty,max=255"`
+	Phone     *string `json:"phone" binding:"omitempty,max=50"`
+	IsActive  *bool   `json:"is_active"`
+}
+
 type adminResponse struct {
 	ID        string  `json:"id"`
 	MemberID  string  `json:"member_id"`
 	GenderID  *string `json:"gender_id"`
 	PrefixID  *string `json:"prefix_id"`
+	AdminCode *string `json:"admin_code"`
 	FirstName *string `json:"first_name"`
 	LastName  *string `json:"last_name"`
 	Phone     *string `json:"phone"`
 	IsActive  bool    `json:"is_active"`
+}
+
+type registerAdminResponse struct {
+	Member memberRegisterResponse `json:"member"`
+	Admin  adminResponse          `json:"admin"`
+}
+
+type memberRegisterResponse struct {
+	ID       string `json:"id"`
+	SchoolID string `json:"school_id"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	IsActive bool   `json:"is_active"`
+}
+
+func (c *Controller) Register(ctx *gin.Context) {
+	_, log := utils.LogSpanFromGin(ctx)
+	var req registerAdminRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
+
+	schoolID, err := uuid.Parse(req.SchoolID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	genderID, err := utils.ParseUUIDPtr(req.GenderID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	prefixID, err := utils.ParseUUIDPtr(req.PrefixID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	member, admin, err := c.svc.Register(ctx.Request.Context(), &RegisterAdminInput{
+		SchoolID:  schoolID,
+		Email:     req.Email,
+		Password:  req.Password,
+		GenderID:  genderID,
+		PrefixID:  prefixID,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Phone:     req.Phone,
+		IsActive:  isActive,
+	})
+	if err != nil {
+		if isDuplicateKeyError(err) {
+			base.ValidateFailed(ctx, ci18n.MemberEmailDuplicate, nil)
+			return
+		}
+		log.Errf("admins.register.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
+	base.Success(ctx, registerAdminResponse{
+		Member: toMemberRegisterResponse(member),
+		Admin:  toAdminResponse(admin),
+	})
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -214,5 +298,24 @@ func parseAdminCreateUpdateFields(ctx *gin.Context, memberIDRaw string, genderID
 }
 
 func toAdminResponse(admin *ent.MemberAdmin) adminResponse {
-	return adminResponse{ID: admin.ID.String(), MemberID: admin.MemberID.String(), GenderID: utils.UUIDToStringPtr(admin.GenderID), PrefixID: utils.UUIDToStringPtr(admin.PrefixID), FirstName: admin.FirstName, LastName: admin.LastName, Phone: admin.Phone, IsActive: admin.IsActive}
+	return adminResponse{ID: admin.ID.String(), MemberID: admin.MemberID.String(), GenderID: utils.UUIDToStringPtr(admin.GenderID), PrefixID: utils.UUIDToStringPtr(admin.PrefixID), AdminCode: admin.AdminCode, FirstName: admin.FirstName, LastName: admin.LastName, Phone: admin.Phone, IsActive: admin.IsActive}
+}
+
+func toMemberRegisterResponse(member *ent.Member) memberRegisterResponse {
+	return memberRegisterResponse{
+		ID:       member.ID.String(),
+		SchoolID: member.SchoolID.String(),
+		Email:    member.Email,
+		Role:     string(member.Role),
+		IsActive: member.IsActive,
+	}
+}
+
+func isDuplicateKeyError(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505"
+	}
+
+	return false
 }

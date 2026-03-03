@@ -14,6 +14,7 @@ type MemberAdmin struct {
 	MemberID  uuid.UUID  `bun:"member_id,type:uuid,notnull"`
 	GenderID  *uuid.UUID `bun:"gender_id,type:uuid"`
 	PrefixID  *uuid.UUID `bun:"prefix_id,type:uuid"`
+	AdminCode *string    `bun:"admin_code"`
 	FirstName *string    `bun:"first_name"`
 	LastName  *string    `bun:"last_name"`
 	Phone     *string    `bun:"phone"`

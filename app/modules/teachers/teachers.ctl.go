@@ -50,6 +50,24 @@ type createTeacherRequest struct {
 
 type updateTeacherRequest = createTeacherRequest
 
+type registerTeacherRequest struct {
+	SchoolID                string  `json:"school_id" binding:"required,uuid"`
+	Email                   string  `json:"email" binding:"required,email,max=255"`
+	Password                string  `json:"password" binding:"required,min=6,max=255"`
+	GenderID                *string `json:"gender_id" binding:"omitempty,uuid"`
+	PrefixID                *string `json:"prefix_id" binding:"omitempty,uuid"`
+	TeacherCode             *string `json:"teacher_code" binding:"omitempty,max=255"`
+	FirstName               *string `json:"first_name" binding:"omitempty,max=255"`
+	LastName                *string `json:"last_name" binding:"omitempty,max=255"`
+	CitizenID               *string `json:"citizen_id" binding:"omitempty,max=13"`
+	Phone                   *string `json:"phone" binding:"omitempty,max=50"`
+	CurrentPosition         *string `json:"current_position" binding:"omitempty,max=255"`
+	CurrentAcademicStanding *string `json:"current_academic_standing" binding:"omitempty,max=255"`
+	Department              *string `json:"department" binding:"omitempty,max=255"`
+	StartDate               *string `json:"start_date" binding:"omitempty,datetime=2006-01-02"`
+	IsActive                *bool   `json:"is_active"`
+}
+
 type teacherResponse struct {
 	ID                      string  `json:"id"`
 	MemberID                string  `json:"member_id"`
@@ -65,6 +83,87 @@ type teacherResponse struct {
 	Department              *string `json:"department"`
 	StartDate               *string `json:"start_date"`
 	IsActive                bool    `json:"is_active"`
+}
+
+type registerTeacherResponse struct {
+	Member memberRegisterResponse `json:"member"`
+	Teacher teacherResponse       `json:"teacher"`
+}
+
+type memberRegisterResponse struct {
+	ID       string `json:"id"`
+	SchoolID string `json:"school_id"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	IsActive bool   `json:"is_active"`
+}
+
+func (c *Controller) Register(ctx *gin.Context) {
+	_, log := utils.LogSpanFromGin(ctx)
+	var req registerTeacherRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
+
+	schoolID, err := uuid.Parse(req.SchoolID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	genderID, err := parseUUIDPtr(req.GenderID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	prefixID, err := parseUUIDPtr(req.PrefixID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	startDate, err := parseDatePtr(req.StartDate)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	member, teacher, err := c.svc.Register(ctx.Request.Context(), &RegisterTeacherInput{
+		SchoolID:                schoolID,
+		Email:                   req.Email,
+		Password:                req.Password,
+		GenderID:                genderID,
+		PrefixID:                prefixID,
+		TeacherCode:             req.TeacherCode,
+		FirstName:               req.FirstName,
+		LastName:                req.LastName,
+		CitizenID:               req.CitizenID,
+		Phone:                   req.Phone,
+		CurrentPosition:         req.CurrentPosition,
+		CurrentAcademicStanding: req.CurrentAcademicStanding,
+		Department:              req.Department,
+		StartDate:               startDate,
+		IsActive:                isActive,
+	})
+	if err != nil {
+		if isDuplicateKeyError(err) {
+			base.ValidateFailed(ctx, ci18n.MemberEmailDuplicate, nil)
+			return
+		}
+		log.Errf("teachers.register.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
+	base.Success(ctx, registerTeacherResponse{
+		Member: toMemberRegisterResponse(member),
+		Teacher: toTeacherResponse(teacher),
+	})
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -271,6 +370,16 @@ func dateToStringPtr(value *time.Time) *string {
 	}
 	parsed := value.Format(dateLayoutOnly)
 	return &parsed
+}
+
+func toMemberRegisterResponse(member *ent.Member) memberRegisterResponse {
+	return memberRegisterResponse{
+		ID:       member.ID.String(),
+		SchoolID: member.SchoolID.String(),
+		Email:    member.Email,
+		Role:     string(member.Role),
+		IsActive: member.IsActive,
+	}
 }
 
 func isDuplicateKeyError(err error) bool {

@@ -7,3 +7,17 @@ tmp/
 storage/
 .DS_Store
 todo_tree.example
+*.log
+*.cache
+*.bak
+*.swp
+node_modules/
+coverage/
+.gocache/
+.gomod/
+.gopkg/
+.gosum/
+.vscode/
+.gotem/
+.exe/
+

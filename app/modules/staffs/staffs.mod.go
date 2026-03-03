@@ -1,7 +1,6 @@
 package staffs
 
 import (
-	entitiesinf "education-flow/app/modules/entities/inf"
 	"education-flow/internal/config"
 
 	"go.opentelemetry.io/otel"
@@ -14,7 +13,7 @@ type Module struct {
 	Ctl    *Controller
 }
 
-func New(conf *config.Config[Config], db entitiesinf.MemberStaffEntity) *Module {
+func New(conf *config.Config[Config], db serviceDB) *Module {
 	tracer := otel.Tracer("education-flow.modules.staffs")
 	svc := newService(&Options{Config: conf, tracer: tracer, db: db})
 

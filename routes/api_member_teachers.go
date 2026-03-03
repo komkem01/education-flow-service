@@ -7,6 +7,7 @@ import (
 )
 
 func apiMemberTeachers(r *gin.RouterGroup, mod *modules.Modules) {
+	r.POST("/teachers/register", mod.Teacher.Ctl.Register)
 	registerCRUD(r, "/teachers", mod.Teacher.Ctl.List, mod.Teacher.Ctl.Get, mod.Teacher.Ctl.Create, mod.Teacher.Ctl.Update, mod.Teacher.Ctl.Delete)
 
 	r.GET("/teachers/:id/educations", mod.TeacherEducations.Ctl.List)

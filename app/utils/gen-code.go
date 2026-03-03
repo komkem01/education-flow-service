@@ -1,6 +1,11 @@
 package utils
 
-import "strings"
+import (
+	"crypto/rand"
+	"fmt"
+	"math/big"
+	"strings"
+)
 
 func NextAlphaCode(last string) string {
 	if last == "" {
@@ -23,4 +28,14 @@ func NextAlphaCode(last string) string {
 	first := upper[0]
 	next := first + 1
 	return strings.Repeat(string(next), n)
+}
+
+func GenerateRoleCode(prefix string) (string, error) {
+	max := big.NewInt(1000000)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s%06d", strings.ToUpper(strings.TrimSpace(prefix)), n.Int64()), nil
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -36,15 +37,98 @@ type createParentRequest struct {
 
 type updateParentRequest = createParentRequest
 
+type registerParentRequest struct {
+	SchoolID  string  `json:"school_id" binding:"required,uuid"`
+	Email     string  `json:"email" binding:"required,email,max=255"`
+	Password  string  `json:"password" binding:"required,min=6,max=255"`
+	GenderID  *string `json:"gender_id" binding:"omitempty,uuid"`
+	PrefixID  *string `json:"prefix_id" binding:"omitempty,uuid"`
+	FirstName *string `json:"first_name" binding:"omitempty,max=255"`
+	LastName  *string `json:"last_name" binding:"omitempty,max=255"`
+	Phone     *string `json:"phone" binding:"omitempty,max=50"`
+	IsActive  *bool   `json:"is_active"`
+}
+
 type parentResponse struct {
 	ID        string  `json:"id"`
 	MemberID  string  `json:"member_id"`
 	GenderID  *string `json:"gender_id"`
 	PrefixID  *string `json:"prefix_id"`
+	ParentCode *string `json:"parent_code"`
 	FirstName *string `json:"first_name"`
 	LastName  *string `json:"last_name"`
 	Phone     *string `json:"phone"`
 	IsActive  bool    `json:"is_active"`
+}
+
+type registerParentResponse struct {
+	Member memberRegisterResponse `json:"member"`
+	Parent parentResponse         `json:"parent"`
+}
+
+type memberRegisterResponse struct {
+	ID       string `json:"id"`
+	SchoolID string `json:"school_id"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+	IsActive bool   `json:"is_active"`
+}
+
+func (c *Controller) Register(ctx *gin.Context) {
+	_, log := utils.LogSpanFromGin(ctx)
+	var req registerParentRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
+
+	schoolID, err := uuid.Parse(req.SchoolID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	genderID, err := utils.ParseUUIDPtr(req.GenderID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	prefixID, err := utils.ParseUUIDPtr(req.PrefixID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	member, parent, err := c.svc.Register(ctx.Request.Context(), &RegisterParentInput{
+		SchoolID:  schoolID,
+		Email:     req.Email,
+		Password:  req.Password,
+		GenderID:  genderID,
+		PrefixID:  prefixID,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Phone:     req.Phone,
+		IsActive:  isActive,
+	})
+	if err != nil {
+		if isDuplicateKeyError(err) {
+			base.ValidateFailed(ctx, ci18n.MemberEmailDuplicate, nil)
+			return
+		}
+		log.Errf("parents.register.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
+	base.Success(ctx, registerParentResponse{
+		Member: toMemberRegisterResponse(member),
+		Parent: toParentResponse(parent),
+	})
 }
 
 func (c *Controller) Create(ctx *gin.Context) {
@@ -214,5 +298,24 @@ func parseParentCreateUpdateFields(ctx *gin.Context, memberIDRaw string, genderI
 }
 
 func toParentResponse(parent *ent.MemberParent) parentResponse {
-	return parentResponse{ID: parent.ID.String(), MemberID: parent.MemberID.String(), GenderID: utils.UUIDToStringPtr(parent.GenderID), PrefixID: utils.UUIDToStringPtr(parent.PrefixID), FirstName: parent.FirstName, LastName: parent.LastName, Phone: parent.Phone, IsActive: parent.IsActive}
+	return parentResponse{ID: parent.ID.String(), MemberID: parent.MemberID.String(), GenderID: utils.UUIDToStringPtr(parent.GenderID), PrefixID: utils.UUIDToStringPtr(parent.PrefixID), ParentCode: parent.ParentCode, FirstName: parent.FirstName, LastName: parent.LastName, Phone: parent.Phone, IsActive: parent.IsActive}
+}
+
+func toMemberRegisterResponse(member *ent.Member) memberRegisterResponse {
+	return memberRegisterResponse{
+		ID:       member.ID.String(),
+		SchoolID: member.SchoolID.String(),
+		Email:    member.Email,
+		Role:     string(member.Role),
+		IsActive: member.IsActive,
+	}
+}
+
+func isDuplicateKeyError(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505"
+	}
+
+	return false
 }
