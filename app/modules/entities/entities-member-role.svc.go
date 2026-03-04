@@ -27,6 +27,16 @@ func (s *Service) AddMemberRole(ctx context.Context, memberID uuid.UUID, role en
 	return nil
 }
 
+func (s *Service) RemoveMemberRole(ctx context.Context, memberID uuid.UUID, role ent.MemberRole) error {
+	_, err := s.db.NewDelete().
+		Model((*ent.MemberRoleLink)(nil)).
+		Where("member_id = ?", memberID).
+		Where("role = ?", role).
+		Exec(ctx)
+
+	return err
+}
+
 func (s *Service) ListMemberRolesByMemberID(ctx context.Context, memberID uuid.UUID) ([]ent.MemberRole, error) {
 	var links []*ent.MemberRoleLink
 	if err := s.db.NewSelect().

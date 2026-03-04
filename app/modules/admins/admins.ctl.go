@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -200,6 +201,12 @@ func (c *Controller) Register(ctx *gin.Context) {
 
 func (c *Controller) Create(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	var req createAdminRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
@@ -215,8 +222,12 @@ func (c *Controller) Create(ctx *gin.Context) {
 		isActive = *req.IsActive
 	}
 
-	admin, err := c.svc.Create(ctx.Request.Context(), &CreateAdminInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, FirstName: req.FirstName, LastName: req.LastName, Phone: req.Phone, IsActive: isActive})
+	admin, err := c.svc.Create(ctx.Request.Context(), &CreateAdminInput{SchoolID: claims.SchoolID, MemberID: memberID, GenderID: genderID, PrefixID: prefixID, FirstName: req.FirstName, LastName: req.LastName, Phone: req.Phone, IsActive: isActive})
 	if err != nil {
+		if errors.Is(err, ErrAdminSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
 		if errors.Is(err, ErrInvalidAdminMemberRole) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
 			return
@@ -231,6 +242,12 @@ func (c *Controller) Create(ctx *gin.Context) {
 
 func (c *Controller) List(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	memberID, err := utils.ParseQueryUUID(ctx.Query("member_id"))
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
@@ -242,8 +259,12 @@ func (c *Controller) List(ctx *gin.Context) {
 		return
 	}
 
-	admins, err := c.svc.List(ctx.Request.Context(), &ListAdminsInput{MemberID: memberID, OnlyActive: onlyActive})
+	admins, err := c.svc.List(ctx.Request.Context(), &ListAdminsInput{SchoolID: claims.SchoolID, MemberID: memberID, OnlyActive: onlyActive})
 	if err != nil {
+		if errors.Is(err, ErrAdminSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
 		log.Errf("admins.list.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
@@ -259,12 +280,18 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Get(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	adminID, ok := parseAdminID(ctx)
 	if !ok {
 		return
 	}
 
-	admin, err := c.svc.GetByID(ctx.Request.Context(), adminID)
+	admin, err := c.svc.GetByID(ctx.Request.Context(), claims.SchoolID, adminID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.AdminNotFound, nil)
@@ -280,6 +307,12 @@ func (c *Controller) Get(ctx *gin.Context) {
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	adminID, ok := parseAdminID(ctx)
 	if !ok {
 		return
@@ -300,8 +333,12 @@ func (c *Controller) Update(ctx *gin.Context) {
 		isActive = *req.IsActive
 	}
 
-	admin, err := c.svc.UpdateByID(ctx.Request.Context(), adminID, &UpdateAdminInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, FirstName: req.FirstName, LastName: req.LastName, Phone: req.Phone, IsActive: isActive})
+	admin, err := c.svc.UpdateByID(ctx.Request.Context(), adminID, &UpdateAdminInput{SchoolID: claims.SchoolID, MemberID: memberID, GenderID: genderID, PrefixID: prefixID, FirstName: req.FirstName, LastName: req.LastName, Phone: req.Phone, IsActive: isActive})
 	if err != nil {
+		if errors.Is(err, ErrAdminSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
 		if errors.Is(err, ErrInvalidAdminMemberRole) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
 			return
@@ -320,12 +357,18 @@ func (c *Controller) Update(ctx *gin.Context) {
 
 func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	adminID, ok := parseAdminID(ctx)
 	if !ok {
 		return
 	}
 
-	if err := c.svc.DeleteByID(ctx.Request.Context(), adminID); err != nil {
+	if err := c.svc.DeleteByIDInSchool(ctx.Request.Context(), claims.SchoolID, adminID); err != nil {
 		log.Errf("admins.delete.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return

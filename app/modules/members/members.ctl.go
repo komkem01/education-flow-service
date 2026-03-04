@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -32,6 +33,15 @@ type memberURIRequest struct {
 	ID string `uri:"id" binding:"required"`
 }
 
+type memberRoleURIRequest struct {
+	ID   string `uri:"id" binding:"required"`
+	Role string `uri:"role" binding:"required"`
+}
+
+type addMemberRoleRequest struct {
+	Role string `json:"role" binding:"required,oneof=student teacher admin staff parent"`
+}
+
 type createMemberRequest struct {
 	SchoolID string `json:"school_id" binding:"required,uuid"`
 	Email    string `json:"email" binding:"required,email,max=255"`
@@ -57,8 +67,19 @@ type memberResponse struct {
 	LastLogin *string `json:"last_login"`
 }
 
+type memberRolesResponse struct {
+	MemberID string   `json:"member_id"`
+	Roles    []string `json:"roles"`
+}
+
 func (c *Controller) Create(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	var req createMemberRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
@@ -68,6 +89,10 @@ func (c *Controller) Create(ctx *gin.Context) {
 	schoolID, err := uuid.Parse(req.SchoolID)
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	if schoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
@@ -94,6 +119,11 @@ func (c *Controller) Create(ctx *gin.Context) {
 
 func (c *Controller) List(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
 
 	var schoolID *uuid.UUID
 	schoolIDQuery := ctx.Query("school_id")
@@ -103,8 +133,12 @@ func (c *Controller) List(ctx *gin.Context) {
 			base.BadRequest(ctx, ci18n.InvalidID, nil)
 			return
 		}
-		schoolID = &parsedSchoolID
+		if parsedSchoolID != claims.SchoolID {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
 	}
+	schoolID = &claims.SchoolID
 
 	var role *ent.MemberRole
 	roleQuery := ctx.Query("role")
@@ -144,6 +178,12 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Get(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseMemberID(ctx)
 	if !ok {
 		return
@@ -160,14 +200,40 @@ func (c *Controller) Get(ctx *gin.Context) {
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
 	}
+	if member.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
 
 	base.Success(ctx, toMemberResponse(member))
 }
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseMemberID(ctx)
 	if !ok {
+		return
+	}
+
+	existing, err := c.svc.GetByID(ctx.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
+
+		log.Errf("members.update.precheck.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	if existing.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
@@ -180,6 +246,10 @@ func (c *Controller) Update(ctx *gin.Context) {
 	schoolID, err := uuid.Parse(req.SchoolID)
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+	if schoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
@@ -211,8 +281,30 @@ func (c *Controller) Update(ctx *gin.Context) {
 
 func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseMemberID(ctx)
 	if !ok {
+		return
+	}
+
+	member, err := c.svc.GetByID(ctx.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
+
+		log.Errf("members.delete.precheck.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	if member.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
@@ -223,6 +315,112 @@ func (c *Controller) Delete(ctx *gin.Context) {
 	}
 
 	base.Success(ctx, gin.H{"id": id.String()})
+}
+
+func (c *Controller) ListRoles(ctx *gin.Context) {
+	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
+	id, ok := parseMemberID(ctx)
+	if !ok {
+		return
+	}
+
+	roles, err := c.svc.ListRoles(ctx.Request.Context(), claims.SchoolID, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrMemberSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
+
+		log.Errf("members.list-roles.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
+	base.Success(ctx, toMemberRolesResponse(id, roles))
+}
+
+func (c *Controller) AddRole(ctx *gin.Context) {
+	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
+	id, ok := parseMemberID(ctx)
+	if !ok {
+		return
+	}
+
+	var req addMemberRoleRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
+
+	roles, err := c.svc.AddRole(ctx.Request.Context(), claims.SchoolID, id, ent.ToMemberRole(req.Role))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrMemberSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
+
+		log.Errf("members.add-role.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
+	base.Success(ctx, toMemberRolesResponse(id, roles))
+}
+
+func (c *Controller) RemoveRole(ctx *gin.Context) {
+	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
+	memberID, role, ok := parseMemberRoleIDAndRole(ctx)
+	if !ok {
+		return
+	}
+
+	roles, err := c.svc.RemoveRole(ctx.Request.Context(), claims.SchoolID, memberID, role)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrMemberSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
+		if errors.Is(err, ErrMemberRoleRequired) {
+			base.ValidateFailed(ctx, ci18n.BadRequest, nil)
+			return
+		}
+
+		log.Errf("members.remove-role.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
+	base.Success(ctx, toMemberRolesResponse(memberID, roles))
 }
 
 func parseMemberID(ctx *gin.Context) (uuid.UUID, bool) {
@@ -241,6 +439,28 @@ func parseMemberID(ctx *gin.Context) (uuid.UUID, bool) {
 	return id, true
 }
 
+func parseMemberRoleIDAndRole(ctx *gin.Context) (uuid.UUID, ent.MemberRole, bool) {
+	var req memberRoleURIRequest
+	if err := ctx.ShouldBindUri(&req); err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return uuid.Nil, "", false
+	}
+
+	id, err := uuid.Parse(req.ID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return uuid.Nil, "", false
+	}
+
+	role := ent.ToMemberRole(req.Role)
+	if string(role) != req.Role {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return uuid.Nil, "", false
+	}
+
+	return id, role, true
+}
+
 func toMemberResponse(member *ent.Member) memberResponse {
 	var lastLogin *string
 	if member.LastLogin != nil {
@@ -255,6 +475,18 @@ func toMemberResponse(member *ent.Member) memberResponse {
 		Role:      string(member.Role),
 		IsActive:  member.IsActive,
 		LastLogin: lastLogin,
+	}
+}
+
+func toMemberRolesResponse(memberID uuid.UUID, roles []ent.MemberRole) memberRolesResponse {
+	responseRoles := make([]string, 0, len(roles))
+	for _, role := range roles {
+		responseRoles = append(responseRoles, string(role))
+	}
+
+	return memberRolesResponse{
+		MemberID: memberID.String(),
+		Roles:    responseRoles,
 	}
 }
 

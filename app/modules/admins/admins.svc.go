@@ -41,6 +41,7 @@ type Options struct {
 }
 
 type CreateAdminInput struct {
+	SchoolID  uuid.UUID
 	MemberID  uuid.UUID
 	GenderID  *uuid.UUID
 	PrefixID  *uuid.UUID
@@ -86,17 +87,27 @@ type RegisterAdminWorkExperienceInput struct {
 }
 
 type ListAdminsInput struct {
+	SchoolID   uuid.UUID
 	MemberID   *uuid.UUID
 	OnlyActive bool
 }
 
 var ErrInvalidAdminMemberRole = errors.New("invalid-admin-member-role")
+var ErrAdminSchoolMismatch = errors.New("admin-school-mismatch")
 
 func newService(opt *Options) *Service {
 	return &Service{tracer: opt.tracer, db: opt.db}
 }
 
 func (s *Service) Create(ctx context.Context, input *CreateAdminInput) (*ent.MemberAdmin, error) {
+	member, err := s.db.GetMemberByID(ctx, input.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != input.SchoolID {
+		return nil, ErrAdminSchoolMismatch
+	}
+
 	allowed, err := s.db.MemberHasAdminRole(ctx, input.MemberID)
 	if err != nil {
 		return nil, err
@@ -142,14 +153,37 @@ func (s *Service) Create(ctx context.Context, input *CreateAdminInput) (*ent.Mem
 }
 
 func (s *Service) List(ctx context.Context, input *ListAdminsInput) ([]*ent.MemberAdmin, error) {
-	return s.db.ListAdmins(ctx, input.MemberID, input.OnlyActive)
+	if input.MemberID != nil {
+		member, err := s.db.GetMemberByID(ctx, *input.MemberID)
+		if err != nil {
+			return nil, err
+		}
+		if member.SchoolID != input.SchoolID {
+			return nil, ErrAdminSchoolMismatch
+		}
+	}
+
+	return s.db.ListAdmins(ctx, &input.SchoolID, input.MemberID, input.OnlyActive)
 }
 
-func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.MemberAdmin, error) {
-	return s.db.GetAdminByID(ctx, id)
+func (s *Service) GetByID(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) (*ent.MemberAdmin, error) {
+	return s.db.GetAdminByID(ctx, id, &schoolID)
 }
 
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateAdminInput) (*ent.MemberAdmin, error) {
+	_, err := s.db.GetAdminByID(ctx, id, &input.SchoolID)
+	if err != nil {
+		return nil, err
+	}
+
+	member, err := s.db.GetMemberByID(ctx, input.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != input.SchoolID {
+		return nil, ErrAdminSchoolMismatch
+	}
+
 	allowed, err := s.db.MemberHasAdminRole(ctx, input.MemberID)
 	if err != nil {
 		return nil, err
@@ -172,7 +206,11 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateAdm
 }
 
 func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
-	return s.db.DeleteAdminByID(ctx, id)
+	return s.db.DeleteAdminByID(ctx, id, nil)
+}
+
+func (s *Service) DeleteByIDInSchool(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) error {
+	return s.db.DeleteAdminByID(ctx, id, &schoolID)
 }
 
 func (s *Service) Register(ctx context.Context, input *RegisterAdminInput) (*ent.Member, *ent.MemberAdmin, error) {
@@ -227,7 +265,7 @@ func (s *Service) Register(ctx context.Context, input *RegisterAdminInput) (*ent
 
 		admin, err = s.db.CreateAdmin(ctx, adminPayload)
 		if err == nil {
-			cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteAdminByID(ctx, admin.ID) })
+			cleanupFns = append(cleanupFns, func() { _ = s.db.DeleteAdminByID(ctx, admin.ID, nil) })
 			break
 		}
 		if !(autoGenerateCode && isAdminCodeDuplicateError(err)) {

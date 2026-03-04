@@ -186,6 +186,7 @@ type MemberEntity interface {
 
 type MemberRoleEntity interface {
 	AddMemberRole(ctx context.Context, memberID uuid.UUID, role ent.MemberRole) error
+	RemoveMemberRole(ctx context.Context, memberID uuid.UUID, role ent.MemberRole) error
 	ListMemberRolesByMemberID(ctx context.Context, memberID uuid.UUID) ([]ent.MemberRole, error)
 	MemberHasAnyRole(ctx context.Context, memberID uuid.UUID, roles []ent.MemberRole) (bool, error)
 }
@@ -218,10 +219,10 @@ type MemberStaffEntity interface {
 
 type MemberAdminEntity interface {
 	CreateAdmin(ctx context.Context, admin *ent.MemberAdmin) (*ent.MemberAdmin, error)
-	GetAdminByID(ctx context.Context, id uuid.UUID) (*ent.MemberAdmin, error)
+	GetAdminByID(ctx context.Context, id uuid.UUID, schoolID *uuid.UUID) (*ent.MemberAdmin, error)
 	UpdateAdminByID(ctx context.Context, id uuid.UUID, admin *ent.MemberAdmin) (*ent.MemberAdmin, error)
-	DeleteAdminByID(ctx context.Context, id uuid.UUID) error
-	ListAdmins(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberAdmin, error)
+	DeleteAdminByID(ctx context.Context, id uuid.UUID, schoolID *uuid.UUID) error
+	ListAdmins(ctx context.Context, schoolID *uuid.UUID, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberAdmin, error)
 	MemberHasAdminRole(ctx context.Context, memberID uuid.UUID) (bool, error)
 }
 

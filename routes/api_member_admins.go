@@ -15,6 +15,9 @@ func apiMemberAdmins(r *gin.RouterGroup, mod *modules.Modules) {
 	protected.Use(requireAuth(mod), requireRoles(ent.MemberRoleAdmin, ent.MemberRoleStaff))
 
 	registerCRUD(protected, "/members", mod.Member.Ctl.List, mod.Member.Ctl.Get, mod.Member.Ctl.Create, mod.Member.Ctl.Update, mod.Member.Ctl.Delete)
+	protected.GET("/members/:id/roles", mod.Member.Ctl.ListRoles)
+	protected.POST("/members/:id/roles", mod.Member.Ctl.AddRole)
+	protected.DELETE("/members/:id/roles/:role", mod.Member.Ctl.RemoveRole)
 	registerCRUD(protected, "/admins", mod.Admin.Ctl.List, mod.Admin.Ctl.Get, mod.Admin.Ctl.Create, mod.Admin.Ctl.Update, mod.Admin.Ctl.Delete)
 
 	protected.GET("/parents", mod.Parent.Ctl.List)

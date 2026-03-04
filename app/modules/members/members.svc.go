@@ -2,6 +2,7 @@ package members
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -16,7 +17,12 @@ import (
 
 type Service struct {
 	tracer trace.Tracer
-	db     entitiesinf.MemberEntity
+	db     serviceDB
+}
+
+type serviceDB interface {
+	entitiesinf.MemberEntity
+	entitiesinf.MemberRoleEntity
 }
 
 type Config struct{}
@@ -24,7 +30,7 @@ type Config struct{}
 type Options struct {
 	*config.Config[Config]
 	tracer trace.Tracer
-	db     entitiesinf.MemberEntity
+	db     serviceDB
 }
 
 type CreateMemberInput struct {
@@ -48,6 +54,11 @@ type ListMembersInput struct {
 	Role       *ent.MemberRole
 	OnlyActive bool
 }
+
+var (
+	ErrMemberSchoolMismatch = errors.New("member-school-mismatch")
+	ErrMemberRoleRequired   = errors.New("member-role-required")
+)
 
 func newService(opt *Options) *Service {
 	return &Service{
@@ -100,4 +111,70 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateMem
 
 func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	return s.db.DeleteMemberByID(ctx, id)
+}
+
+func (s *Service) ListRoles(ctx context.Context, schoolID uuid.UUID, memberID uuid.UUID) ([]ent.MemberRole, error) {
+	member, err := s.db.GetMemberByID(ctx, memberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != schoolID {
+		return nil, ErrMemberSchoolMismatch
+	}
+
+	return s.db.ListMemberRolesByMemberID(ctx, memberID)
+}
+
+func (s *Service) AddRole(ctx context.Context, schoolID uuid.UUID, memberID uuid.UUID, role ent.MemberRole) ([]ent.MemberRole, error) {
+	member, err := s.db.GetMemberByID(ctx, memberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != schoolID {
+		return nil, ErrMemberSchoolMismatch
+	}
+
+	if err := s.db.AddMemberRole(ctx, memberID, role); err != nil {
+		return nil, err
+	}
+
+	return s.db.ListMemberRolesByMemberID(ctx, memberID)
+}
+
+func (s *Service) RemoveRole(ctx context.Context, schoolID uuid.UUID, memberID uuid.UUID, role ent.MemberRole) ([]ent.MemberRole, error) {
+	member, err := s.db.GetMemberByID(ctx, memberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != schoolID {
+		return nil, ErrMemberSchoolMismatch
+	}
+
+	roles, err := s.db.ListMemberRolesByMemberID(ctx, memberID)
+	if err != nil {
+		return nil, err
+	}
+
+	roleCount := 0
+	hasTargetRole := false
+	for _, item := range roles {
+		roleCount++
+		if item == role {
+			hasTargetRole = true
+		}
+	}
+
+	if !hasTargetRole {
+		return roles, nil
+	}
+
+	if roleCount <= 1 {
+		return nil, ErrMemberRoleRequired
+	}
+
+	if err := s.db.RemoveMemberRole(ctx, memberID, role); err != nil {
+		return nil, err
+	}
+
+	return s.db.ListMemberRolesByMemberID(ctx, memberID)
 }

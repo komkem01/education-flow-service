@@ -19,9 +19,19 @@ func (s *Service) CreateAdmin(ctx context.Context, admin *ent.MemberAdmin) (*ent
 	return admin, nil
 }
 
-func (s *Service) GetAdminByID(ctx context.Context, id uuid.UUID) (*ent.MemberAdmin, error) {
+func (s *Service) GetAdminByID(ctx context.Context, id uuid.UUID, schoolID *uuid.UUID) (*ent.MemberAdmin, error) {
 	admin := new(ent.MemberAdmin)
-	if err := s.db.NewSelect().Model(admin).Where("id = ?", id).Scan(ctx); err != nil {
+	query := s.db.NewSelect().
+		Model(admin).
+		Where("mad.id = ?", id)
+
+	if schoolID != nil {
+		query = query.
+			Join("JOIN members AS mem ON mem.id = mad.member_id").
+			Where("mem.school_id = ?", *schoolID)
+	}
+
+	if err := query.Scan(ctx); err != nil {
 		return nil, err
 	}
 
@@ -49,14 +59,31 @@ func (s *Service) UpdateAdminByID(ctx context.Context, id uuid.UUID, admin *ent.
 	return updated, nil
 }
 
-func (s *Service) DeleteAdminByID(ctx context.Context, id uuid.UUID) error {
-	_, err := s.db.NewDelete().Model((*ent.MemberAdmin)(nil)).Where("id = ?", id).Exec(ctx)
+func (s *Service) DeleteAdminByID(ctx context.Context, id uuid.UUID, schoolID *uuid.UUID) error {
+	query := s.db.NewDelete().
+		Model((*ent.MemberAdmin)(nil)).
+		Where("id = ?", id)
+
+	if schoolID != nil {
+		query = query.Where("member_id IN (?)", s.db.NewSelect().
+			Model((*ent.Member)(nil)).
+			Column("id").
+			Where("school_id = ?", *schoolID))
+	}
+
+	_, err := query.Exec(ctx)
 	return err
 }
 
-func (s *Service) ListAdmins(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberAdmin, error) {
+func (s *Service) ListAdmins(ctx context.Context, schoolID *uuid.UUID, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberAdmin, error) {
 	var admins []*ent.MemberAdmin
 	query := s.db.NewSelect().Model(&admins).Order("created_at DESC")
+
+	if schoolID != nil {
+		query = query.
+			Join("JOIN members AS mem ON mem.id = mad.member_id").
+			Where("mem.school_id = ?", *schoolID)
+	}
 
 	if memberID != nil {
 		query = query.Where("member_id = ?", *memberID)
