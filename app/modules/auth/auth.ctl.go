@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"sort"
 
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
@@ -49,6 +50,16 @@ type meResponse struct {
 	Roles     []string `json:"roles"`
 	IssuedAt  string   `json:"issued_at"`
 	ExpiresAt string   `json:"expires_at"`
+}
+
+type permissionsResponse struct {
+	MemberID     string   `json:"member_id"`
+	SchoolID     string   `json:"school_id"`
+	Roles        []string `json:"roles"`
+	Permissions  []string `json:"permissions"`
+	BackOffice   bool     `json:"back_office"`
+	PrimaryRole  string   `json:"primary_role"`
+	TokenExpires string   `json:"token_expires"`
 }
 
 func (c *Controller) Login(ctx *gin.Context) {
@@ -106,6 +117,25 @@ func (c *Controller) Me(ctx *gin.Context) {
 	})
 }
 
+func (c *Controller) Permissions(ctx *gin.Context) {
+	claims, ok := GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
+	permissions := permissionsFromRoles(claims.Roles)
+	base.Success(ctx, permissionsResponse{
+		MemberID:     claims.MemberID.String(),
+		SchoolID:     claims.SchoolID.String(),
+		Roles:        toRoleStrings(claims.Roles),
+		Permissions:  permissions,
+		BackOffice:   hasRole(claims.Roles, ent.MemberRoleAdmin) || hasRole(claims.Roles, ent.MemberRoleStaff),
+		PrimaryRole:  string(primaryRoleFromClaims(claims)),
+		TokenExpires: claims.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z"),
+	})
+}
+
 func toRoleStrings(roles []ent.MemberRole) []string {
 	out := make([]string, 0, len(roles))
 	for _, role := range roles {
@@ -120,4 +150,53 @@ func primaryRoleFromClaims(claims *TokenClaims) ent.MemberRole {
 	}
 
 	return claims.Role
+}
+
+func permissionsFromRoles(roles []ent.MemberRole) []string {
+	set := map[string]struct{}{
+		"auth:me": {},
+	}
+
+	for _, role := range roles {
+		switch role {
+		case ent.MemberRoleAdmin:
+			set["members:read"] = struct{}{}
+			set["members:write"] = struct{}{}
+			set["members:roles:write"] = struct{}{}
+			set["admins:read"] = struct{}{}
+			set["admins:write"] = struct{}{}
+			set["backoffice:read"] = struct{}{}
+		case ent.MemberRoleStaff:
+			set["members:read"] = struct{}{}
+			set["members:write"] = struct{}{}
+			set["members:roles:write"] = struct{}{}
+			set["admins:read"] = struct{}{}
+			set["backoffice:read"] = struct{}{}
+		case ent.MemberRoleTeacher:
+			set["teacher:self:read"] = struct{}{}
+			set["teacher:self:write"] = struct{}{}
+		case ent.MemberRoleStudent:
+			set["student:self:read"] = struct{}{}
+		case ent.MemberRoleParent:
+			set["parent:self:read"] = struct{}{}
+		}
+	}
+
+	result := make([]string, 0, len(set))
+	for permission := range set {
+		result = append(result, permission)
+	}
+	sort.Strings(result)
+
+	return result
+}
+
+func hasRole(roles []ent.MemberRole, role ent.MemberRole) bool {
+	for _, item := range roles {
+		if item == role {
+			return true
+		}
+	}
+
+	return false
 }

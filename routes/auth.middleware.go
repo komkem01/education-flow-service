@@ -35,6 +35,7 @@ func requireAuth(mod *modules.Modules) gin.HandlerFunc {
 		}
 
 		auth.SetClaimsToGin(ctx, claims)
+		ctx.Request.Header.Set("X-Member-ID", claims.MemberID.String())
 		ctx.Next()
 	}
 }

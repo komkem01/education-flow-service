@@ -12,4 +12,5 @@ func apiAuth(r *gin.RouterGroup, mod *modules.Modules) {
 	authProtected := r.Group("/auth")
 	authProtected.Use(requireAuth(mod))
 	authProtected.GET("/me", mod.Auth.Ctl.Me)
+	authProtected.GET("/permissions", mod.Auth.Ctl.Permissions)
 }
