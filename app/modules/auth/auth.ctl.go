@@ -74,6 +74,8 @@ type switchRoleResponse struct {
 	Roles       []string `json:"roles"`
 }
 
+type refreshResponse = switchRoleResponse
+
 func (c *Controller) Login(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
 
@@ -145,6 +147,33 @@ func (c *Controller) Permissions(ctx *gin.Context) {
 		BackOffice:   hasRole(claims.Roles, ent.MemberRoleAdmin) || hasRole(claims.Roles, ent.MemberRoleStaff),
 		PrimaryRole:  string(primaryRoleFromClaims(claims)),
 		TokenExpires: claims.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z"),
+	})
+}
+
+func (c *Controller) Refresh(ctx *gin.Context) {
+	claims, ok := GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
+	result, err := c.svc.RefreshAccessToken(ctx.Request.Context(), &RefreshTokenInput{Claims: claims})
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrExpiredToken):
+			base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		default:
+			base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		}
+		return
+	}
+
+	base.Success(ctx, refreshResponse{
+		AccessToken: result.AccessToken,
+		TokenType:   "Bearer",
+		ExpiresAt:   result.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z"),
+		Role:        string(result.Role),
+		Roles:       toRoleStrings(result.Roles),
 	})
 }
 

@@ -21,7 +21,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const defaultAccessTokenTTL = 24 * time.Hour
+const defaultAccessTokenTTL = 30 * time.Minute
 
 type Service struct {
 	tracer         trace.Tracer
@@ -60,6 +60,17 @@ type SwitchRoleInput struct {
 }
 
 type SwitchRoleResult struct {
+	AccessToken string
+	ExpiresAt   time.Time
+	Role        ent.MemberRole
+	Roles       []ent.MemberRole
+}
+
+type RefreshTokenInput struct {
+	Claims *TokenClaims
+}
+
+type RefreshTokenResult struct {
 	AccessToken string
 	ExpiresAt   time.Time
 	Role        ent.MemberRole
@@ -292,6 +303,59 @@ func (s *Service) SwitchRole(ctx context.Context, input *SwitchRoleInput) (*Swit
 		AccessToken: accessToken,
 		ExpiresAt:   expiresAt,
 		Role:        memberRole,
+		Roles:       orderedRoles,
+	}, nil
+}
+
+func (s *Service) RefreshAccessToken(ctx context.Context, input *RefreshTokenInput) (*RefreshTokenResult, error) {
+	if input == nil || input.Claims == nil {
+		return nil, ErrInvalidToken
+	}
+
+	member, err := s.db.GetMemberByID(ctx, input.Claims.MemberID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidToken
+		}
+		return nil, err
+	}
+
+	if member.SchoolID != input.Claims.SchoolID || !member.IsActive {
+		return nil, ErrInvalidToken
+	}
+
+	roles, err := s.db.ListMemberRolesByMemberID(ctx, member.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(roles) == 0 {
+		return nil, ErrInvalidToken
+	}
+
+	validRoles := normalizeKnownRoles(roles)
+	if len(validRoles) == 0 {
+		return nil, ErrInvalidToken
+	}
+
+	activeRole := input.Claims.Role
+	if !containsRole(validRoles, activeRole) {
+		activeRole = validRoles[0]
+	}
+
+	orderedRoles := orderRolesWithPrimary(validRoles, activeRole)
+	now := time.Now().UTC()
+	expiresAt := now.Add(s.accessTokenTTL)
+	member.Role = activeRole
+
+	accessToken, err := s.generateAccessToken(member, orderedRoles, now, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RefreshTokenResult{
+		AccessToken: accessToken,
+		ExpiresAt:   expiresAt,
+		Role:        activeRole,
 		Roles:       orderedRoles,
 	}, nil
 }

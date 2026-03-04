@@ -22,3 +22,5 @@ coverage/
 .exe/
 .docs/
 scripts/
+json/
+.gotmp/
