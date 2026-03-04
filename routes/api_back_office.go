@@ -13,6 +13,12 @@ func apiBackOffice(r *gin.RouterGroup, mod *modules.Modules) {
 
 	protected.GET("/auth/me", mod.Auth.Ctl.Me)
 	protected.GET("/auth/permissions", mod.Auth.Ctl.Permissions)
+	protected.POST("/auth/switch-role", mod.Auth.Ctl.SwitchRole)
+
+	protected.POST("/onboarding/staffs/register", mod.Staff.Ctl.Register)
+	protected.POST("/onboarding/teachers/register", mod.Teacher.Ctl.Register)
+	protected.POST("/onboarding/students/register", mod.Student.Ctl.Register)
+	protected.POST("/onboarding/parents/register", mod.Parent.Ctl.Register)
 
 	registerCRUD(protected, "/academic-years", mod.AcademicYear.Ctl.List, mod.AcademicYear.Ctl.Get, mod.AcademicYear.Ctl.Create, mod.AcademicYear.Ctl.Update, mod.AcademicYear.Ctl.Delete)
 	registerCRUD(protected, "/schools", mod.School.Ctl.List, mod.School.Ctl.Get, mod.School.Ctl.Create, mod.School.Ctl.Update, mod.School.Ctl.Delete)

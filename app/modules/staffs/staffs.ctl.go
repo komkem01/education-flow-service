@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -113,6 +114,11 @@ func (c *Controller) Register(ctx *gin.Context) {
 		return
 	}
 
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
+
 	genderID, err := utils.ParseUUIDPtr(req.GenderID)
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
@@ -189,6 +195,18 @@ func (c *Controller) Register(ctx *gin.Context) {
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			base.ValidateFailed(ctx, ci18n.MemberEmailDuplicate, nil)
+			return
+		}
+		if isForeignKeyConstraintError(err, "fk_members_school_id") {
+			base.ValidateFailed(ctx, ci18n.SchoolNotFound, nil)
+			return
+		}
+		if isForeignKeyConstraintError(err, "fk_member_staffs_gender_id") {
+			base.ValidateFailed(ctx, ci18n.GenderNotFound, nil)
+			return
+		}
+		if isForeignKeyConstraintError(err, "fk_member_staffs_prefix_id") {
+			base.ValidateFailed(ctx, ci18n.PrefixNotFound, nil)
 			return
 		}
 		log.Errf("staffs.register.error: %v", err)
@@ -389,6 +407,15 @@ func isDuplicateKeyError(err error) bool {
 	}
 
 	return false
+}
+
+func isForeignKeyConstraintError(err error, constraint string) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	return pgErr.Code == "23503" && pgErr.ConstraintName == constraint
 }
 
 func parseStaffDatePtr(raw *string) (*time.Time, error) {

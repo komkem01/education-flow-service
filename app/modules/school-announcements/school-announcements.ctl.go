@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -63,6 +64,10 @@ func (c *Controller) Create(ctx *gin.Context) {
 	if !ok {
 		return
 	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
 
 	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{SchoolID: schoolID, AuthorMemberID: authorID, Title: req.Title, Content: req.Content, TargetRole: role, IsPinned: req.IsPinned})
 	if err != nil {
@@ -92,6 +97,13 @@ func (c *Controller) List(ctx *gin.Context) {
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
 		return
+	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok {
+		if schoolID != nil && *schoolID != claims.SchoolID {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
+		schoolID = &claims.SchoolID
 	}
 	var role *ent.MemberRole
 	if raw := ctx.Query("target_role"); raw != "" {
@@ -144,6 +156,10 @@ func (c *Controller) Get(ctx *gin.Context) {
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
 	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && item.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
 
 	base.Success(ctx, toResponse(item))
 }
@@ -162,6 +178,25 @@ func (c *Controller) Update(ctx *gin.Context) {
 	}
 	schoolID, authorID, role, ok := parseCreateUpdateFields(ctx, req.SchoolID, req.AuthorMemberID, req.TargetRole)
 	if !ok {
+		return
+	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
+
+	existing, err := c.svc.GetByID(ctx.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.SchoolAnnouncementNotFound, nil)
+			return
+		}
+		log.Errf("school-announcements.get-before-update.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && existing.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
@@ -195,6 +230,21 @@ func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
 	id, ok := parseID(ctx)
 	if !ok {
+		return
+	}
+
+	item, err := c.svc.GetByID(ctx.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.SchoolAnnouncementNotFound, nil)
+			return
+		}
+		log.Errf("school-announcements.get-before-delete.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && item.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 

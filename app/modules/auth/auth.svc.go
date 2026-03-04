@@ -54,6 +54,18 @@ type LoginResult struct {
 	Roles       []ent.MemberRole
 }
 
+type SwitchRoleInput struct {
+	Claims *TokenClaims
+	Role   ent.MemberRole
+}
+
+type SwitchRoleResult struct {
+	AccessToken string
+	ExpiresAt   time.Time
+	Role        ent.MemberRole
+	Roles       []ent.MemberRole
+}
+
 type TokenClaims struct {
 	MemberID  uuid.UUID
 	SchoolID  uuid.UUID
@@ -77,6 +89,7 @@ var (
 	ErrInactiveMember     = errors.New("inactive-member")
 	ErrInvalidToken       = errors.New("invalid-token")
 	ErrExpiredToken       = errors.New("expired-token")
+	ErrRoleNotAllowed     = errors.New("role-not-allowed")
 )
 
 func newService(opt *Options) *Service {
@@ -230,6 +243,59 @@ func (s *Service) ParseAccessToken(token string) (*TokenClaims, error) {
 	}, nil
 }
 
+func (s *Service) SwitchRole(ctx context.Context, input *SwitchRoleInput) (*SwitchRoleResult, error) {
+	if input == nil || input.Claims == nil {
+		return nil, ErrInvalidToken
+	}
+
+	memberRole, ok := parseKnownMemberRole(string(input.Role))
+	if !ok {
+		return nil, ErrRoleNotAllowed
+	}
+
+	member, err := s.db.GetMemberByID(ctx, input.Claims.MemberID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidToken
+		}
+		return nil, err
+	}
+
+	if member.SchoolID != input.Claims.SchoolID || !member.IsActive {
+		return nil, ErrInvalidToken
+	}
+
+	roles, err := s.db.ListMemberRolesByMemberID(ctx, member.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(roles) == 0 {
+		return nil, ErrInvalidToken
+	}
+
+	validRoles := normalizeKnownRoles(roles)
+	if !containsRole(validRoles, memberRole) {
+		return nil, ErrRoleNotAllowed
+	}
+
+	orderedRoles := orderRolesWithPrimary(validRoles, memberRole)
+	now := time.Now().UTC()
+	expiresAt := now.Add(s.accessTokenTTL)
+	member.Role = memberRole
+
+	accessToken, err := s.generateAccessToken(member, orderedRoles, now, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SwitchRoleResult{
+		AccessToken: accessToken,
+		ExpiresAt:   expiresAt,
+		Role:        memberRole,
+		Roles:       orderedRoles,
+	}, nil
+}
+
 func (s *Service) generateAccessToken(member *ent.Member, roles []ent.MemberRole, now, expiresAt time.Time) (string, error) {
 	headerBytes, err := json.Marshal(map[string]string{"alg": "HS256", "typ": "JWT"})
 	if err != nil {
@@ -283,4 +349,42 @@ func parseKnownMemberRole(value string) (ent.MemberRole, bool) {
 	default:
 		return "", false
 	}
+}
+
+func containsRole(roles []ent.MemberRole, role ent.MemberRole) bool {
+	for _, existing := range roles {
+		if existing == role {
+			return true
+		}
+	}
+
+	return false
+}
+
+func orderRolesWithPrimary(roles []ent.MemberRole, role ent.MemberRole) []ent.MemberRole {
+	ordered := make([]ent.MemberRole, 0, len(roles))
+	ordered = append(ordered, role)
+
+	for _, existing := range roles {
+		if existing == role {
+			continue
+		}
+		ordered = append(ordered, existing)
+	}
+
+	return ordered
+}
+
+func normalizeKnownRoles(roles []ent.MemberRole) []ent.MemberRole {
+	normalized := make([]ent.MemberRole, 0, len(roles))
+
+	for _, role := range roles {
+		parsedRole, ok := parseKnownMemberRole(string(role))
+		if !ok || containsRole(normalized, parsedRole) {
+			continue
+		}
+		normalized = append(normalized, parsedRole)
+	}
+
+	return normalized
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -51,22 +52,22 @@ type createTeacherRequest struct {
 type updateTeacherRequest = createTeacherRequest
 
 type registerTeacherRequest struct {
-	SchoolID                string  `json:"school_id" binding:"required,uuid"`
-	Email                   string  `json:"email" binding:"required,email,max=255"`
-	Password                string  `json:"password" binding:"required,min=6,max=255"`
-	GenderID                *string `json:"gender_id" binding:"omitempty,uuid"`
-	PrefixID                *string `json:"prefix_id" binding:"omitempty,uuid"`
-	TeacherCode             *string `json:"teacher_code" binding:"omitempty,max=255"`
-	FirstName               *string `json:"first_name" binding:"omitempty,max=255"`
-	LastName                *string `json:"last_name" binding:"omitempty,max=255"`
-	CitizenID               *string `json:"citizen_id" binding:"omitempty,max=13"`
-	Phone                   *string `json:"phone" binding:"omitempty,max=50"`
-	CurrentPosition         *string `json:"current_position" binding:"omitempty,max=255"`
-	CurrentAcademicStanding *string `json:"current_academic_standing" binding:"omitempty,max=255"`
-	Department              *string `json:"department" binding:"omitempty,max=255"`
-	StartDate               *string `json:"start_date" binding:"omitempty,datetime=2006-01-02"`
-	IsActive                *bool   `json:"is_active"`
-	Educations              []registerTeacherEducationRequest     `json:"educations" binding:"required,min=1,dive"`
+	SchoolID                string                                 `json:"school_id" binding:"required,uuid"`
+	Email                   string                                 `json:"email" binding:"required,email,max=255"`
+	Password                string                                 `json:"password" binding:"required,min=6,max=255"`
+	GenderID                *string                                `json:"gender_id" binding:"omitempty,uuid"`
+	PrefixID                *string                                `json:"prefix_id" binding:"omitempty,uuid"`
+	TeacherCode             *string                                `json:"teacher_code" binding:"omitempty,max=255"`
+	FirstName               *string                                `json:"first_name" binding:"omitempty,max=255"`
+	LastName                *string                                `json:"last_name" binding:"omitempty,max=255"`
+	CitizenID               *string                                `json:"citizen_id" binding:"omitempty,max=13"`
+	Phone                   *string                                `json:"phone" binding:"omitempty,max=50"`
+	CurrentPosition         *string                                `json:"current_position" binding:"omitempty,max=255"`
+	CurrentAcademicStanding *string                                `json:"current_academic_standing" binding:"omitempty,max=255"`
+	Department              *string                                `json:"department" binding:"omitempty,max=255"`
+	StartDate               *string                                `json:"start_date" binding:"omitempty,datetime=2006-01-02"`
+	IsActive                *bool                                  `json:"is_active"`
+	Educations              []registerTeacherEducationRequest      `json:"educations" binding:"required,min=1,dive"`
 	WorkExperiences         []registerTeacherWorkExperienceRequest `json:"work_experiences" binding:"required,min=1,dive"`
 }
 
@@ -105,8 +106,8 @@ type teacherResponse struct {
 }
 
 type registerTeacherResponse struct {
-	Member memberRegisterResponse `json:"member"`
-	Teacher teacherResponse       `json:"teacher"`
+	Member  memberRegisterResponse `json:"member"`
+	Teacher teacherResponse        `json:"teacher"`
 }
 
 type memberRegisterResponse struct {
@@ -128,6 +129,11 @@ func (c *Controller) Register(ctx *gin.Context) {
 	schoolID, err := uuid.Parse(req.SchoolID)
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
@@ -223,13 +229,25 @@ func (c *Controller) Register(ctx *gin.Context) {
 			base.ValidateFailed(ctx, ci18n.MemberEmailDuplicate, nil)
 			return
 		}
+		if isForeignKeyConstraintError(err, "fk_members_school_id") {
+			base.ValidateFailed(ctx, ci18n.SchoolNotFound, nil)
+			return
+		}
+		if isForeignKeyConstraintError(err, "fk_member_teachers_gender_id") {
+			base.ValidateFailed(ctx, ci18n.GenderNotFound, nil)
+			return
+		}
+		if isForeignKeyConstraintError(err, "fk_member_teachers_prefix_id") {
+			base.ValidateFailed(ctx, ci18n.PrefixNotFound, nil)
+			return
+		}
 		log.Errf("teachers.register.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
 	}
 
 	base.Success(ctx, registerTeacherResponse{
-		Member: toMemberRegisterResponse(member),
+		Member:  toMemberRegisterResponse(member),
 		Teacher: toTeacherResponse(teacher),
 	})
 }
@@ -464,6 +482,15 @@ func isDuplicateKeyError(err error) bool {
 		return pgErr.Code == "23505"
 	}
 	return false
+}
+
+func isForeignKeyConstraintError(err error, constraint string) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	return pgErr.Code == "23503" && pgErr.ConstraintName == constraint
 }
 
 func isTeacherCodeDuplicateKeyError(err error) bool {

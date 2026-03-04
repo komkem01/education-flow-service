@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -50,15 +51,15 @@ type registerParentRequest struct {
 }
 
 type parentResponse struct {
-	ID        string  `json:"id"`
-	MemberID  string  `json:"member_id"`
-	GenderID  *string `json:"gender_id"`
-	PrefixID  *string `json:"prefix_id"`
+	ID         string  `json:"id"`
+	MemberID   string  `json:"member_id"`
+	GenderID   *string `json:"gender_id"`
+	PrefixID   *string `json:"prefix_id"`
 	ParentCode *string `json:"parent_code"`
-	FirstName *string `json:"first_name"`
-	LastName  *string `json:"last_name"`
-	Phone     *string `json:"phone"`
-	IsActive  bool    `json:"is_active"`
+	FirstName  *string `json:"first_name"`
+	LastName   *string `json:"last_name"`
+	Phone      *string `json:"phone"`
+	IsActive   bool    `json:"is_active"`
 }
 
 type registerParentResponse struct {
@@ -85,6 +86,11 @@ func (c *Controller) Register(ctx *gin.Context) {
 	schoolID, err := uuid.Parse(req.SchoolID)
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
@@ -118,6 +124,18 @@ func (c *Controller) Register(ctx *gin.Context) {
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			base.ValidateFailed(ctx, ci18n.MemberEmailDuplicate, nil)
+			return
+		}
+		if isForeignKeyConstraintError(err, "fk_members_school_id") {
+			base.ValidateFailed(ctx, ci18n.SchoolNotFound, nil)
+			return
+		}
+		if isForeignKeyConstraintError(err, "fk_member_parents_gender_id") {
+			base.ValidateFailed(ctx, ci18n.GenderNotFound, nil)
+			return
+		}
+		if isForeignKeyConstraintError(err, "fk_member_parents_prefix_id") {
+			base.ValidateFailed(ctx, ci18n.PrefixNotFound, nil)
 			return
 		}
 		log.Errf("parents.register.error: %v", err)
@@ -318,4 +336,13 @@ func isDuplicateKeyError(err error) bool {
 	}
 
 	return false
+}
+
+func isForeignKeyConstraintError(err error, constraint string) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return false
+	}
+
+	return pgErr.Code == "23503" && pgErr.ConstraintName == constraint
 }

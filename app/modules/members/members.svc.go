@@ -58,6 +58,7 @@ type ListMembersInput struct {
 var (
 	ErrMemberSchoolMismatch = errors.New("member-school-mismatch")
 	ErrMemberRoleRequired   = errors.New("member-role-required")
+	ErrStudentRoleExclusive = errors.New("student-role-exclusive")
 )
 
 func newService(opt *Options) *Service {
@@ -93,6 +94,15 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.Member, error
 }
 
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateMemberInput) (*ent.Member, error) {
+	roles, err := s.db.ListMemberRolesByMemberID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateStudentRoleExclusivity(roles, input.Role); err != nil {
+		return nil, err
+	}
+
 	hashedPassword, err := hashing.HashPasswordString(strings.TrimSpace(input.Password))
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
@@ -134,11 +144,52 @@ func (s *Service) AddRole(ctx context.Context, schoolID uuid.UUID, memberID uuid
 		return nil, ErrMemberSchoolMismatch
 	}
 
+	roles, err := s.db.ListMemberRolesByMemberID(ctx, memberID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateStudentRoleExclusivity(roles, role); err != nil {
+		return nil, err
+	}
+
 	if err := s.db.AddMemberRole(ctx, memberID, role); err != nil {
 		return nil, err
 	}
 
 	return s.db.ListMemberRolesByMemberID(ctx, memberID)
+}
+
+func validateStudentRoleExclusivity(existingRoles []ent.MemberRole, targetRole ent.MemberRole) error {
+	hasStudent := containsRole(existingRoles, ent.MemberRoleStudent)
+	targetIsStudent := targetRole == ent.MemberRoleStudent
+
+	if targetIsStudent {
+		if len(existingRoles) == 0 {
+			return nil
+		}
+		if len(existingRoles) == 1 && hasStudent {
+			return nil
+		}
+
+		return ErrStudentRoleExclusive
+	}
+
+	if hasStudent {
+		return ErrStudentRoleExclusive
+	}
+
+	return nil
+}
+
+func containsRole(roles []ent.MemberRole, role ent.MemberRole) bool {
+	for _, existing := range roles {
+		if existing == role {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *Service) RemoveRole(ctx context.Context, schoolID uuid.UUID, memberID uuid.UUID, role ent.MemberRole) ([]ent.MemberRole, error) {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -76,6 +77,11 @@ func (c *Controller) Create(ctx *gin.Context) {
 		return
 	}
 
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
+
 	priority := ent.DocumentPriorityNormal
 	if req.Priority != "" {
 		priority = ent.ToDocumentPriority(req.Priority)
@@ -110,6 +116,13 @@ func (c *Controller) List(ctx *gin.Context) {
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
 		return
+	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok {
+		if schoolID != nil && *schoolID != claims.SchoolID {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
+		schoolID = &claims.SchoolID
 	}
 	senderMemberID, err := utils.ParseQueryUUID(ctx.Query("sender_member_id"))
 	if err != nil {
@@ -160,6 +173,10 @@ func (c *Controller) Get(ctx *gin.Context) {
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
 	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && item.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
 
 	base.Success(ctx, toDocumentTrackingResponse(item))
 }
@@ -179,6 +196,25 @@ func (c *Controller) Update(ctx *gin.Context) {
 
 	schoolID, senderMemberID, receiverMemberID, ok := parseDocumentTrackingCreateUpdateFields(ctx, req.SchoolID, req.SenderMemberID, req.ReceiverMemberID)
 	if !ok {
+		return
+	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
+
+	existing, err := c.svc.GetByID(ctx.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.DocumentTrackingNotFound, nil)
+			return
+		}
+		log.Errf("document-tracking.get-before-update.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && existing.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
@@ -208,6 +244,21 @@ func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
 	id, ok := parseDocumentTrackingID(ctx)
 	if !ok {
+		return
+	}
+
+	item, err := c.svc.GetByID(ctx.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.DocumentTrackingNotFound, nil)
+			return
+		}
+		log.Errf("document-tracking.get-before-delete.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok && item.SchoolID != claims.SchoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 

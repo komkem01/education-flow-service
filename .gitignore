@@ -20,4 +20,5 @@ coverage/
 .vscode/
 .gotem/
 .exe/
-
+.docs/
+scripts/

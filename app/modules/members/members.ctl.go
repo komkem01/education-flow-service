@@ -261,6 +261,11 @@ func (c *Controller) Update(ctx *gin.Context) {
 		IsActive: req.IsActive,
 	})
 	if err != nil {
+		if errors.Is(err, ErrStudentRoleExclusive) {
+			base.ValidateFailed(ctx, ci18n.BadRequest, nil)
+			return
+		}
+
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
 			return
@@ -370,6 +375,11 @@ func (c *Controller) AddRole(ctx *gin.Context) {
 
 	roles, err := c.svc.AddRole(ctx.Request.Context(), claims.SchoolID, id, ent.ToMemberRole(req.Role))
 	if err != nil {
+		if errors.Is(err, ErrStudentRoleExclusive) {
+			base.ValidateFailed(ctx, ci18n.BadRequest, nil)
+			return
+		}
+
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
 			return
