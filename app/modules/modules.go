@@ -24,6 +24,7 @@ import (
 	"education-flow/app/modules/prefixes"
 	questionbanks "education-flow/app/modules/question-banks"
 	questionchoices "education-flow/app/modules/question-choices"
+	"education-flow/app/modules/reports"
 	"education-flow/app/modules/schedules"
 	schoolannouncements "education-flow/app/modules/school-announcements"
 	schoolcalendarevents "education-flow/app/modules/school-calendar-events"
@@ -95,6 +96,7 @@ type Modules struct {
 	StudentBehavior              *studentbehaviors.Module
 	SystemAuditLog               *systemauditlogs.Module
 	DataChangeLog                *datachangelogs.Module
+	Report                       *reports.Module
 	Storage                      *storages.Module
 	StorageLink                  *storagelinks.Module
 	Member                       *members.Module
@@ -159,6 +161,7 @@ func modulesInit() {
 	studentBehaviorMod := studentbehaviors.New(config.Conf[studentbehaviors.Config](confMod.Svc), entitiesMod.Svc)
 	systemAuditLogMod := systemauditlogs.New(config.Conf[systemauditlogs.Config](confMod.Svc), entitiesMod.Svc)
 	dataChangeLogMod := datachangelogs.New(config.Conf[datachangelogs.Config](confMod.Svc), entitiesMod.Svc)
+	reportMod := reports.New(config.Conf[reports.Config](confMod.Svc), db.Svc.DB())
 	storageMod := storages.New(config.Conf[storages.Config](confMod.Svc), entitiesMod.Svc)
 	storageLinkMod := storagelinks.New(config.Conf[storagelinks.Config](confMod.Svc), entitiesMod.Svc)
 	memberMod := members.New(config.Conf[members.Config](confMod.Svc), entitiesMod.Svc)
@@ -216,6 +219,7 @@ func modulesInit() {
 		StudentBehavior:              studentBehaviorMod,
 		SystemAuditLog:               systemAuditLogMod,
 		DataChangeLog:                dataChangeLogMod,
+		Report:                       reportMod,
 		Storage:                      storageMod,
 		StorageLink:                  storageLinkMod,
 		Member:                       memberMod,

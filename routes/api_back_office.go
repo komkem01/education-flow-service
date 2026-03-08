@@ -14,6 +14,12 @@ func apiBackOffice(r *gin.RouterGroup, mod *modules.Modules) {
 	protected.GET("/auth/me", mod.Auth.Ctl.Me)
 	protected.GET("/auth/permissions", mod.Auth.Ctl.Permissions)
 	protected.POST("/auth/switch-role", mod.Auth.Ctl.SwitchRole)
+	protected.GET("/reports/filters", mod.Report.Ctl.ListFilters)
+	protected.GET("/reports/summary", mod.Report.Ctl.Summary)
+	protected.GET("/reports/approvals", mod.Report.Ctl.ListApprovals)
+	protected.GET("/reports/roles-members", mod.Report.Ctl.ListRoleMembers)
+	protected.GET("/reports/approvals/:type/:id", mod.Report.Ctl.GetApproval)
+	protected.PATCH("/reports/approvals/:type/:id", mod.Report.Ctl.UpdateApproval)
 
 	protected.POST("/onboarding/staffs/register", mod.Staff.Ctl.Register)
 	protected.POST("/onboarding/teachers/register", mod.Teacher.Ctl.Register)

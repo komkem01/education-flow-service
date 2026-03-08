@@ -77,7 +77,7 @@ func (s *Service) DeleteAdminByID(ctx context.Context, id uuid.UUID, schoolID *u
 
 func (s *Service) ListAdmins(ctx context.Context, schoolID *uuid.UUID, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberAdmin, error) {
 	var admins []*ent.MemberAdmin
-	query := s.db.NewSelect().Model(&admins).Order("created_at DESC")
+	query := s.db.NewSelect().Model(&admins).Order("mad.created_at DESC")
 
 	if schoolID != nil {
 		query = query.
@@ -86,10 +86,10 @@ func (s *Service) ListAdmins(ctx context.Context, schoolID *uuid.UUID, memberID 
 	}
 
 	if memberID != nil {
-		query = query.Where("member_id = ?", *memberID)
+		query = query.Where("mad.member_id = ?", *memberID)
 	}
 	if onlyActive {
-		query = query.Where("is_active = true")
+		query = query.Where("mad.is_active = true")
 	}
 
 	if err := query.Scan(ctx); err != nil {
