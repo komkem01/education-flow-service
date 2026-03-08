@@ -16,7 +16,10 @@ type Module struct {
 
 type Config struct{}
 
-func New(conf *config.Config[Config], db entitiesinf.SubjectSubgroupEntity) *Module {
+func New(conf *config.Config[Config], db interface {
+	entitiesinf.SubjectSubgroupEntity
+	entitiesinf.SubjectGroupEntity
+}) *Module {
 	tracer := otel.Tracer("education-flow.modules.subject-subgroups")
 	svc := newService(&Options{
 		Config: conf,

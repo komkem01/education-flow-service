@@ -38,6 +38,12 @@ func (m *mockGradeRecordDB) EnrollmentBelongsToStudent(ctx context.Context, enro
 func (m *mockGradeRecordDB) GradeItemBelongsToStudent(ctx context.Context, gradeItemID uuid.UUID, studentID uuid.UUID) (bool, error) {
 	return m.gradeItemBelongs, nil
 }
+func (m *mockGradeRecordDB) GetStudentByID(ctx context.Context, id uuid.UUID) (*ent.MemberStudent, error) {
+	return &ent.MemberStudent{MemberID: uuid.New()}, nil
+}
+func (m *mockGradeRecordDB) GetMemberByID(ctx context.Context, id uuid.UUID) (*ent.Member, error) {
+	return &ent.Member{SchoolID: uuid.New()}, nil
+}
 
 func TestPhase4CreateRejectsMismatchedEnrollment(t *testing.T) {
 	svc := newService(&Options{db: &mockGradeRecordDB{enrollmentBelongs: false, gradeItemBelongs: true}})

@@ -61,4 +61,6 @@ func apiMemberStudents(r *gin.RouterGroup, mod *modules.Modules) {
 	studentOwned.POST("/grade-records", mod.StudentGradeRecords.Ctl.Create)
 	studentOwned.PATCH("/grade-records/:child_id", mod.StudentGradeRecords.Ctl.Update)
 	studentOwned.DELETE("/grade-records/:child_id", mod.StudentGradeRecords.Ctl.Delete)
+
+	studentOwned.GET("/announcements", mod.SchoolAnnouncement.Ctl.List)
 }

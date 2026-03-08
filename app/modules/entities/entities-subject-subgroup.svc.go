@@ -49,9 +49,9 @@ func (s *Service) DeleteSubjectSubgroupByID(ctx context.Context, id uuid.UUID) e
 	return err
 }
 
-func (s *Service) ListSubjectSubgroups(ctx context.Context, subjectGroupID *uuid.UUID, onlyActive bool) ([]*ent.SubjectSubgroup, error) {
+func (s *Service) ListSubjectSubgroups(ctx context.Context, schoolID uuid.UUID, subjectGroupID *uuid.UUID, onlyActive bool) ([]*ent.SubjectSubgroup, error) {
 	items := []*ent.SubjectSubgroup{}
-	query := s.db.NewSelect().Model(&items).Order("name ASC")
+	query := s.db.NewSelect().Model(&items).Where("school_id = ?", schoolID).Order("name ASC")
 	if subjectGroupID != nil {
 		query = query.Where("subject_group_id = ?", *subjectGroupID)
 	}

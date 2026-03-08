@@ -69,6 +69,10 @@ func (c *Controller) List(ctx *gin.Context) {
 
 	items, err := c.svc.ListByStudentID(ctx.Request.Context(), studentID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.Success(ctx, []response{})
+			return
+		}
 		log.Errf("student-fee-categories.list.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return

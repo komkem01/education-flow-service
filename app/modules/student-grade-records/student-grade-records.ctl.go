@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -81,12 +82,22 @@ func (c *Controller) Create(ctx *gin.Context) {
 
 func (c *Controller) List(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	studentID, _, ok := parseIDs(ctx, false)
 	if !ok {
 		return
 	}
-	items, err := c.svc.ListByStudentID(ctx.Request.Context(), studentID)
+	items, err := c.svc.ListByStudentID(ctx.Request.Context(), claims.SchoolID, studentID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.Success(ctx, []response{})
+			return
+		}
 		log.Errf("student-grade-records.list.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return

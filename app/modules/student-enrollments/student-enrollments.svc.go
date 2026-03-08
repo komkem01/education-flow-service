@@ -23,6 +23,7 @@ var ErrSubjectAssignmentCapacityExceeded = errors.New("subject-assignment-capaci
 type serviceDB interface {
 	entitiesinf.StudentEnrollmentEntity
 	entitiesinf.MemberStudentEntity
+	entitiesinf.MemberEntity
 	entitiesinf.SubjectAssignmentEntity
 }
 
@@ -67,7 +68,11 @@ func (s *Service) Create(ctx context.Context, input *CreateInput) (*ent.StudentE
 	return s.db.CreateStudentEnrollment(ctx, item)
 }
 
-func (s *Service) ListByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentEnrollment, error) {
+func (s *Service) ListByStudentID(ctx context.Context, schoolID uuid.UUID, studentID uuid.UUID) ([]*ent.StudentEnrollment, error) {
+	if err := s.ensureStudentInSchool(ctx, studentID, schoolID); err != nil {
+		return nil, err
+	}
+
 	return s.db.ListStudentEnrollmentsByStudentID(ctx, studentID)
 }
 
@@ -103,6 +108,23 @@ func (s *Service) DeleteByID(ctx context.Context, studentID uuid.UUID, id uuid.U
 	}
 
 	return s.db.DeleteStudentEnrollmentByID(ctx, id)
+}
+
+func (s *Service) ensureStudentInSchool(ctx context.Context, studentID uuid.UUID, schoolID uuid.UUID) error {
+	student, err := s.db.GetStudentByID(ctx, studentID)
+	if err != nil {
+		return err
+	}
+
+	member, err := s.db.GetMemberByID(ctx, student.MemberID)
+	if err != nil {
+		return err
+	}
+	if member.SchoolID != schoolID {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
 
 func (s *Service) validateSubjectAssignmentCapacity(ctx context.Context, subjectAssignmentID uuid.UUID, status ent.StudentEnrollmentStatus, existing *ent.StudentEnrollment) error {

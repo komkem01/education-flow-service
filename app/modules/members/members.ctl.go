@@ -39,14 +39,14 @@ type memberRoleURIRequest struct {
 }
 
 type addMemberRoleRequest struct {
-	Role string `json:"role" binding:"required,oneof=student teacher admin staff parent"`
+	Role string `json:"role" binding:"required,oneof=student teacher admin staff parent super_admin"`
 }
 
 type createMemberRequest struct {
 	SchoolID string `json:"school_id" binding:"required,uuid"`
 	Email    string `json:"email" binding:"required,email,max=255"`
 	Password string `json:"password" binding:"required,min=6,max=255"`
-	Role     string `json:"role" binding:"required,oneof=student teacher admin staff parent"`
+	Role     string `json:"role" binding:"required,oneof=student teacher admin staff parent super_admin"`
 	IsActive bool   `json:"is_active"`
 }
 
@@ -54,7 +54,7 @@ type updateMemberRequest struct {
 	SchoolID string `json:"school_id" binding:"required,uuid"`
 	Email    string `json:"email" binding:"required,email,max=255"`
 	Password string `json:"password" binding:"required,min=6,max=255"`
-	Role     string `json:"role" binding:"required,oneof=student teacher admin staff parent"`
+	Role     string `json:"role" binding:"required,oneof=student teacher admin staff parent super_admin"`
 	IsActive bool   `json:"is_active"`
 }
 

@@ -9,20 +9,32 @@ import (
 	entitiesinf "education-flow/app/modules/entities/inf"
 
 	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 )
 
 var _ entitiesinf.MemberEntity = (*Service)(nil)
 
 func (s *Service) CreateMember(ctx context.Context, member *ent.Member) (*ent.Member, error) {
-	if _, err := s.db.NewInsert().
-		Model(member).
-		Column("school_id", "email", "password", "is_active").
-		Returning("*").
-		Exec(ctx); err != nil {
-		return nil, err
-	}
+	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().
+			Model(member).
+			Column("school_id", "email", "password", "is_active").
+			Returning("*").
+			Exec(ctx); err != nil {
+			return err
+		}
 
-	if err := s.AddMemberRole(ctx, member.ID, member.Role); err != nil {
+		link := &ent.MemberRoleLink{MemberID: member.ID, Role: member.Role}
+		if _, err := tx.NewInsert().Model(link).Exec(ctx); err != nil {
+			if isMemberRoleDuplicateError(err) {
+				return nil
+			}
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 

@@ -2,6 +2,7 @@ package subjectgroups
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 
 	"education-flow/app/modules/entities/ent"
@@ -24,6 +25,7 @@ type Options struct {
 }
 
 type CreateSubjectGroupInput struct {
+	SchoolID    uuid.UUID
 	Code        string
 	Name        string
 	Head        *string
@@ -39,6 +41,7 @@ func newService(opt *Options) *Service {
 
 func (s *Service) Create(ctx context.Context, input *CreateSubjectGroupInput) (*ent.SubjectGroup, error) {
 	item := &ent.SubjectGroup{
+		SchoolID:    input.SchoolID,
 		Code:        strings.TrimSpace(input.Code),
 		Name:        strings.TrimSpace(input.Name),
 		Head:        trimStringPtr(input.Head),
@@ -48,16 +51,29 @@ func (s *Service) Create(ctx context.Context, input *CreateSubjectGroupInput) (*
 	return s.db.CreateSubjectGroup(ctx, item)
 }
 
-func (s *Service) List(ctx context.Context, onlyActive bool) ([]*ent.SubjectGroup, error) {
-	return s.db.ListSubjectGroups(ctx, onlyActive)
+func (s *Service) List(ctx context.Context, schoolID uuid.UUID, onlyActive bool) ([]*ent.SubjectGroup, error) {
+	return s.db.ListSubjectGroups(ctx, schoolID, onlyActive)
 }
 
-func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.SubjectGroup, error) {
-	return s.db.GetSubjectGroupByID(ctx, id)
+func (s *Service) GetByIDInSchool(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) (*ent.SubjectGroup, error) {
+	item, err := s.db.GetSubjectGroupByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if item.SchoolID != schoolID {
+		return nil, sql.ErrNoRows
+	}
+	return item, nil
 }
 
-func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateSubjectGroupInput) (*ent.SubjectGroup, error) {
+func (s *Service) UpdateByIDInSchool(ctx context.Context, schoolID uuid.UUID, id uuid.UUID, input *UpdateSubjectGroupInput) (*ent.SubjectGroup, error) {
+	itemInSchool, err := s.GetByIDInSchool(ctx, schoolID, id)
+	if err != nil {
+		return nil, err
+	}
+
 	item := &ent.SubjectGroup{
+		SchoolID:    itemInSchool.SchoolID,
 		Code:        strings.TrimSpace(input.Code),
 		Name:        strings.TrimSpace(input.Name),
 		Head:        trimStringPtr(input.Head),
@@ -67,7 +83,11 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateSub
 	return s.db.UpdateSubjectGroupByID(ctx, id, item)
 }
 
-func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
+func (s *Service) DeleteByIDInSchool(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) error {
+	if _, err := s.GetByIDInSchool(ctx, schoolID, id); err != nil {
+		return err
+	}
+
 	return s.db.DeleteSubjectGroupByID(ctx, id)
 }
 

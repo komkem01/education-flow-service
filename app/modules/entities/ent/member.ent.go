@@ -10,11 +10,12 @@ import (
 type MemberRole string
 
 const (
-	MemberRoleStudent MemberRole = "student"
-	MemberRoleTeacher MemberRole = "teacher"
-	MemberRoleAdmin   MemberRole = "admin"
-	MemberRoleStaff   MemberRole = "staff"
-	MemberRoleParent  MemberRole = "parent"
+	MemberRoleStudent    MemberRole = "student"
+	MemberRoleTeacher    MemberRole = "teacher"
+	MemberRoleAdmin      MemberRole = "admin"
+	MemberRoleStaff      MemberRole = "staff"
+	MemberRoleParent     MemberRole = "parent"
+	MemberRoleSuperAdmin MemberRole = "super_admin"
 )
 
 type Member struct {
@@ -42,6 +43,8 @@ func ToMemberRole(value string) MemberRole {
 		return MemberRoleStaff
 	case "parent":
 		return MemberRoleParent
+	case "super_admin":
+		return MemberRoleSuperAdmin
 	default:
 		return MemberRoleAdmin
 	}

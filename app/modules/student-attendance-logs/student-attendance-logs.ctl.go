@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -54,6 +55,12 @@ type response struct {
 
 func (c *Controller) Create(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	studentID, _, ok := parseIDs(ctx, false)
 	if !ok {
 		return
@@ -83,7 +90,7 @@ func (c *Controller) Create(ctx *gin.Context) {
 	if req.Status != "" {
 		status = ent.ToStudentAttendanceStatus(req.Status)
 	}
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{StudentID: studentID, EnrollmentID: enrollmentID, ScheduleID: scheduleID, CheckDate: checkDate, Status: status, Note: req.Note})
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{SchoolID: claims.SchoolID, StudentID: studentID, EnrollmentID: enrollmentID, ScheduleID: scheduleID, CheckDate: checkDate, Status: status, Note: req.Note})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.StudentEnrollmentNotFound, nil)
@@ -98,12 +105,22 @@ func (c *Controller) Create(ctx *gin.Context) {
 
 func (c *Controller) List(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	studentID, _, ok := parseIDs(ctx, false)
 	if !ok {
 		return
 	}
-	items, err := c.svc.ListByStudentID(ctx.Request.Context(), studentID)
+	items, err := c.svc.ListByStudentID(ctx.Request.Context(), claims.SchoolID, studentID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.Success(ctx, []response{})
+			return
+		}
 		log.Errf("student-attendance-logs.list.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
@@ -117,6 +134,12 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	studentID, childID, ok := parseIDs(ctx, true)
 	if !ok {
 		return
@@ -141,7 +164,7 @@ func (c *Controller) Update(ctx *gin.Context) {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
 		return
 	}
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), studentID, childID, &UpdateInput{EnrollmentID: enrollmentID, ScheduleID: scheduleID, CheckDate: checkDate, Status: ent.ToStudentAttendanceStatus(req.Status), Note: req.Note})
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), claims.SchoolID, studentID, childID, &UpdateInput{SchoolID: claims.SchoolID, EnrollmentID: enrollmentID, ScheduleID: scheduleID, CheckDate: checkDate, Status: ent.ToStudentAttendanceStatus(req.Status), Note: req.Note})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.StudentAttendanceLogNotFound, nil)
@@ -156,11 +179,17 @@ func (c *Controller) Update(ctx *gin.Context) {
 
 func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	studentID, childID, ok := parseIDs(ctx, true)
 	if !ok {
 		return
 	}
-	if err := c.svc.DeleteByID(ctx.Request.Context(), studentID, childID); err != nil {
+	if err := c.svc.DeleteByID(ctx.Request.Context(), claims.SchoolID, studentID, childID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.StudentAttendanceLogNotFound, nil)
 			return

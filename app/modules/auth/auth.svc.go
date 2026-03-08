@@ -33,6 +33,7 @@ type Service struct {
 type serviceDB interface {
 	entitiesinf.MemberEntity
 	entitiesinf.MemberRoleEntity
+	entitiesinf.SchoolEntity
 }
 
 type Options struct {
@@ -64,6 +65,19 @@ type SwitchRoleResult struct {
 	ExpiresAt   time.Time
 	Role        ent.MemberRole
 	Roles       []ent.MemberRole
+}
+
+type SwitchSchoolInput struct {
+	Claims   *TokenClaims
+	SchoolID uuid.UUID
+}
+
+type SwitchSchoolResult struct {
+	AccessToken string
+	ExpiresAt   time.Time
+	Role        ent.MemberRole
+	Roles       []ent.MemberRole
+	SchoolID    uuid.UUID
 }
 
 type RefreshTokenInput struct {
@@ -101,6 +115,7 @@ var (
 	ErrInvalidToken       = errors.New("invalid-token")
 	ErrExpiredToken       = errors.New("expired-token")
 	ErrRoleNotAllowed     = errors.New("role-not-allowed")
+	ErrSchoolNotFound     = errors.New("school-not-found")
 )
 
 func newService(opt *Options) *Service {
@@ -272,7 +287,11 @@ func (s *Service) SwitchRole(ctx context.Context, input *SwitchRoleInput) (*Swit
 		return nil, err
 	}
 
-	if member.SchoolID != input.Claims.SchoolID || !member.IsActive {
+	if !member.IsActive {
+		return nil, ErrInvalidToken
+	}
+
+	if member.SchoolID != input.Claims.SchoolID && !containsRole(input.Claims.Roles, ent.MemberRoleSuperAdmin) {
 		return nil, ErrInvalidToken
 	}
 
@@ -320,7 +339,11 @@ func (s *Service) RefreshAccessToken(ctx context.Context, input *RefreshTokenInp
 		return nil, err
 	}
 
-	if member.SchoolID != input.Claims.SchoolID || !member.IsActive {
+	if !member.IsActive {
+		return nil, ErrInvalidToken
+	}
+
+	if member.SchoolID != input.Claims.SchoolID && !containsRole(input.Claims.Roles, ent.MemberRoleSuperAdmin) {
 		return nil, ErrInvalidToken
 	}
 
@@ -405,10 +428,73 @@ func primaryRole(roles []ent.MemberRole) ent.MemberRole {
 	return ent.MemberRoleAdmin
 }
 
+func (s *Service) SwitchSchool(ctx context.Context, input *SwitchSchoolInput) (*SwitchSchoolResult, error) {
+	if input == nil || input.Claims == nil {
+		return nil, ErrInvalidToken
+	}
+
+	if !containsRole(input.Claims.Roles, ent.MemberRoleSuperAdmin) {
+		return nil, ErrRoleNotAllowed
+	}
+
+	member, err := s.db.GetMemberByID(ctx, input.Claims.MemberID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidToken
+		}
+		return nil, err
+	}
+
+	if !member.IsActive {
+		return nil, ErrInvalidToken
+	}
+
+	roles, err := s.db.ListMemberRolesByMemberID(ctx, member.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	validRoles := normalizeKnownRoles(roles)
+	if !containsRole(validRoles, ent.MemberRoleSuperAdmin) {
+		return nil, ErrRoleNotAllowed
+	}
+
+	if _, err := s.db.GetSchoolByID(ctx, input.SchoolID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrSchoolNotFound
+		}
+		return nil, err
+	}
+
+	activeRole := input.Claims.Role
+	if !containsRole(validRoles, activeRole) {
+		activeRole = ent.MemberRoleSuperAdmin
+	}
+
+	orderedRoles := orderRolesWithPrimary(validRoles, activeRole)
+	now := time.Now().UTC()
+	expiresAt := now.Add(s.accessTokenTTL)
+	member.Role = activeRole
+	member.SchoolID = input.SchoolID
+
+	accessToken, err := s.generateAccessToken(member, orderedRoles, now, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SwitchSchoolResult{
+		AccessToken: accessToken,
+		ExpiresAt:   expiresAt,
+		Role:        activeRole,
+		Roles:       orderedRoles,
+		SchoolID:    input.SchoolID,
+	}, nil
+}
+
 func parseKnownMemberRole(value string) (ent.MemberRole, bool) {
 	role := strings.TrimSpace(strings.ToLower(value))
 	switch ent.MemberRole(role) {
-	case ent.MemberRoleStudent, ent.MemberRoleTeacher, ent.MemberRoleAdmin, ent.MemberRoleStaff, ent.MemberRoleParent:
+	case ent.MemberRoleStudent, ent.MemberRoleTeacher, ent.MemberRoleAdmin, ent.MemberRoleStaff, ent.MemberRoleParent, ent.MemberRoleSuperAdmin:
 		return ent.MemberRole(role), true
 	default:
 		return "", false

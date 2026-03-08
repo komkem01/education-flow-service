@@ -21,6 +21,7 @@ type Config struct {
 func New(conf *config.Config[Config], db interface {
 	entitiesinf.MemberEntity
 	entitiesinf.MemberRoleEntity
+	entitiesinf.SchoolEntity
 }, appKey string) *Module {
 	tracer := otel.Tracer("education-flow.modules.auth")
 	svc := newService(&Options{

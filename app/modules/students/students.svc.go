@@ -2,6 +2,7 @@ package students
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -41,6 +42,7 @@ type Options struct {
 }
 
 type CreateStudentInput struct {
+	SchoolID           uuid.UUID
 	MemberID           uuid.UUID
 	GenderID           *uuid.UUID
 	PrefixID           *uuid.UUID
@@ -98,6 +100,7 @@ type RegisterStudentResult struct {
 }
 
 type ListStudentsInput struct {
+	SchoolID           uuid.UUID
 	MemberID           *uuid.UUID
 	AdvisorTeacherID   *uuid.UUID
 	CurrentClassroomID *uuid.UUID
@@ -108,7 +111,17 @@ func newService(opt *Options) *Service {
 	return &Service{tracer: opt.tracer, db: opt.db}
 }
 
+var ErrStudentSchoolMismatch = errors.New("student-school-mismatch")
+
 func (s *Service) Create(ctx context.Context, input *CreateStudentInput) (*ent.MemberStudent, error) {
+	member, err := s.db.GetMemberByID(ctx, input.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != input.SchoolID {
+		return nil, ErrStudentSchoolMismatch
+	}
+
 	studentCode := trimStringPtr(input.StudentCode)
 	autoGenerateCode := studentCode == nil
 
@@ -148,14 +161,71 @@ func (s *Service) Create(ctx context.Context, input *CreateStudentInput) (*ent.M
 }
 
 func (s *Service) List(ctx context.Context, input *ListStudentsInput) ([]*ent.MemberStudent, error) {
-	return s.db.ListStudents(ctx, input.MemberID, input.AdvisorTeacherID, input.CurrentClassroomID, input.OnlyActive)
+	items, err := s.db.ListStudents(ctx, input.MemberID, input.AdvisorTeacherID, input.CurrentClassroomID, input.OnlyActive)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*ent.MemberStudent, 0, len(items))
+	for _, item := range items {
+		member, err := s.db.GetMemberByID(ctx, item.MemberID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				// Skip orphaned student rows whose member record no longer exists.
+				continue
+			}
+			return nil, err
+		}
+		if member.SchoolID == input.SchoolID {
+			filtered = append(filtered, item)
+		}
+	}
+
+	return filtered, nil
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.MemberStudent, error) {
 	return s.db.GetStudentByID(ctx, id)
 }
 
+func (s *Service) GetByIDInSchool(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) (*ent.MemberStudent, error) {
+	student, err := s.db.GetStudentByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	member, err := s.db.GetMemberByID(ctx, student.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != schoolID {
+		return nil, ErrStudentSchoolMismatch
+	}
+
+	return student, nil
+}
+
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateStudentInput) (*ent.MemberStudent, error) {
+	member, err := s.db.GetMemberByID(ctx, input.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != input.SchoolID {
+		return nil, ErrStudentSchoolMismatch
+	}
+
+	existing, err := s.db.GetStudentByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	existingMember, err := s.db.GetMemberByID(ctx, existing.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if existingMember.SchoolID != input.SchoolID {
+		return nil, ErrStudentSchoolMismatch
+	}
+
 	student := &ent.MemberStudent{
 		MemberID:           input.MemberID,
 		GenderID:           input.GenderID,
@@ -174,6 +244,23 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateStu
 }
 
 func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
+	return s.db.DeleteStudentByID(ctx, id)
+}
+
+func (s *Service) DeleteByIDInSchool(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) error {
+	student, err := s.db.GetStudentByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	member, err := s.db.GetMemberByID(ctx, student.MemberID)
+	if err != nil {
+		return err
+	}
+	if member.SchoolID != schoolID {
+		return ErrStudentSchoolMismatch
+	}
+
 	return s.db.DeleteStudentByID(ctx, id)
 }
 
@@ -291,14 +378,14 @@ func (s *Service) createParentForStudent(ctx context.Context, studentInput *Regi
 	parentCode := trimStringPtr(input.ParentCode)
 	autoGenerateCode := parentCode == nil
 	parentPayload := &ent.MemberParent{
-		MemberID:  parentMember.ID,
-		GenderID:  input.GenderID,
-		PrefixID:  input.PrefixID,
+		MemberID:   parentMember.ID,
+		GenderID:   input.GenderID,
+		PrefixID:   input.PrefixID,
 		ParentCode: parentCode,
-		FirstName: trimStringPtr(input.FirstName),
-		LastName:  trimStringPtr(input.LastName),
-		Phone:     trimStringPtr(input.Phone),
-		IsActive:  input.IsActive,
+		FirstName:  trimStringPtr(input.FirstName),
+		LastName:   trimStringPtr(input.LastName),
+		Phone:      trimStringPtr(input.Phone),
+		IsActive:   input.IsActive,
 	}
 
 	var parent *ent.MemberParent

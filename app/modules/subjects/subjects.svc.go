@@ -71,7 +71,7 @@ func newService(opt *Options) *Service {
 }
 
 func (s *Service) Create(ctx context.Context, input *CreateSubjectInput) (*ent.Subject, error) {
-	if err := s.validateGroupConsistency(ctx, input.SubjectGroupID, input.SubjectSubgroupID); err != nil {
+	if err := s.validateGroupConsistency(ctx, input.SchoolID, input.SubjectGroupID, input.SubjectSubgroupID); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +108,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.Subject, erro
 }
 
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateSubjectInput) (*ent.Subject, error) {
-	if err := s.validateGroupConsistency(ctx, input.SubjectGroupID, input.SubjectSubgroupID); err != nil {
+	if err := s.validateGroupConsistency(ctx, input.SchoolID, input.SubjectGroupID, input.SubjectSubgroupID); err != nil {
 		return nil, err
 	}
 
@@ -151,17 +151,21 @@ func trimStringPtr(input *string) *string {
 	return &value
 }
 
-func (s *Service) validateGroupConsistency(ctx context.Context, subjectGroupID *uuid.UUID, subjectSubgroupID *uuid.UUID) error {
+func (s *Service) validateGroupConsistency(ctx context.Context, schoolID uuid.UUID, subjectGroupID *uuid.UUID, subjectSubgroupID *uuid.UUID) error {
 	if subjectSubgroupID != nil && subjectGroupID == nil {
 		return ErrSubjectSubgroupRequiresGroup
 	}
 
 	if subjectGroupID != nil {
-		if _, err := s.subjectGroupDB.GetSubjectGroupByID(ctx, *subjectGroupID); err != nil {
+		subjectGroup, err := s.subjectGroupDB.GetSubjectGroupByID(ctx, *subjectGroupID)
+		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrSubjectGroupNotFound
 			}
 			return err
+		}
+		if subjectGroup.SchoolID != schoolID {
+			return ErrSubjectGroupNotFound
 		}
 	}
 
@@ -172,6 +176,9 @@ func (s *Service) validateGroupConsistency(ctx context.Context, subjectGroupID *
 				return ErrSubjectSubgroupNotFound
 			}
 			return err
+		}
+		if subgroup.SchoolID != schoolID {
+			return ErrSubjectSubgroupNotFound
 		}
 
 		if subjectGroupID == nil || subgroup.SubjectGroupID != *subjectGroupID {

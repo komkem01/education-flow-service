@@ -11,6 +11,7 @@ type SubjectSubgroup struct {
 	bun.BaseModel `bun:"table:subject_subgroups,alias:ssg"`
 
 	ID             uuid.UUID `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	SchoolID       uuid.UUID `bun:"school_id,type:uuid,notnull"`
 	SubjectGroupID uuid.UUID `bun:"subject_group_id,type:uuid,notnull"`
 	Code           string    `bun:"code,notnull"`
 	Name           string    `bun:"name,notnull"`

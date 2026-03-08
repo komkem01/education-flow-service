@@ -16,7 +16,13 @@ import (
 
 type Service struct {
 	tracer trace.Tracer
-	db     entitiesinf.StudentAttendanceLogEntity
+	db     serviceDB
+}
+
+type serviceDB interface {
+	entitiesinf.StudentAttendanceLogEntity
+	entitiesinf.MemberStudentEntity
+	entitiesinf.MemberEntity
 }
 
 type Config struct{}
@@ -24,10 +30,11 @@ type Config struct{}
 type Options struct {
 	*config.Config[Config]
 	tracer trace.Tracer
-	db     entitiesinf.StudentAttendanceLogEntity
+	db     serviceDB
 }
 
 type CreateInput struct {
+	SchoolID     uuid.UUID
 	StudentID    uuid.UUID
 	EnrollmentID uuid.UUID
 	ScheduleID   uuid.UUID
@@ -41,6 +48,10 @@ type UpdateInput = CreateInput
 func newService(opt *Options) *Service { return &Service{tracer: opt.tracer, db: opt.db} }
 
 func (s *Service) Create(ctx context.Context, input *CreateInput) (*ent.StudentAttendanceLog, error) {
+	if err := s.ensureStudentInSchool(ctx, input.StudentID, input.SchoolID); err != nil {
+		return nil, err
+	}
+
 	allowed, err := s.db.EnrollmentBelongsToStudent(ctx, input.EnrollmentID, input.StudentID)
 	if err != nil {
 		return nil, err
@@ -53,11 +64,19 @@ func (s *Service) Create(ctx context.Context, input *CreateInput) (*ent.StudentA
 	return s.db.CreateStudentAttendanceLog(ctx, item)
 }
 
-func (s *Service) ListByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentAttendanceLog, error) {
+func (s *Service) ListByStudentID(ctx context.Context, schoolID uuid.UUID, studentID uuid.UUID) ([]*ent.StudentAttendanceLog, error) {
+	if err := s.ensureStudentInSchool(ctx, studentID, schoolID); err != nil {
+		return nil, err
+	}
+
 	return s.db.ListStudentAttendanceLogsByStudentID(ctx, studentID)
 }
 
-func (s *Service) UpdateByID(ctx context.Context, studentID uuid.UUID, id uuid.UUID, input *UpdateInput) (*ent.StudentAttendanceLog, error) {
+func (s *Service) UpdateByID(ctx context.Context, schoolID uuid.UUID, studentID uuid.UUID, id uuid.UUID, input *UpdateInput) (*ent.StudentAttendanceLog, error) {
+	if err := s.ensureStudentInSchool(ctx, studentID, schoolID); err != nil {
+		return nil, err
+	}
+
 	belongs, err := s.db.StudentAttendanceLogBelongsToStudent(ctx, id, studentID)
 	if err != nil {
 		return nil, err
@@ -78,7 +97,11 @@ func (s *Service) UpdateByID(ctx context.Context, studentID uuid.UUID, id uuid.U
 	return s.db.UpdateStudentAttendanceLogByID(ctx, id, item)
 }
 
-func (s *Service) DeleteByID(ctx context.Context, studentID uuid.UUID, id uuid.UUID) error {
+func (s *Service) DeleteByID(ctx context.Context, schoolID uuid.UUID, studentID uuid.UUID, id uuid.UUID) error {
+	if err := s.ensureStudentInSchool(ctx, studentID, schoolID); err != nil {
+		return err
+	}
+
 	belongs, err := s.db.StudentAttendanceLogBelongsToStudent(ctx, id, studentID)
 	if err != nil {
 		return err
@@ -88,6 +111,23 @@ func (s *Service) DeleteByID(ctx context.Context, studentID uuid.UUID, id uuid.U
 	}
 
 	return s.db.DeleteStudentAttendanceLogByID(ctx, id)
+}
+
+func (s *Service) ensureStudentInSchool(ctx context.Context, studentID uuid.UUID, schoolID uuid.UUID) error {
+	student, err := s.db.GetStudentByID(ctx, studentID)
+	if err != nil {
+		return err
+	}
+
+	member, err := s.db.GetMemberByID(ctx, student.MemberID)
+	if err != nil {
+		return err
+	}
+	if member.SchoolID != schoolID {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
 
 func trimStringPtr(input *string) *string {

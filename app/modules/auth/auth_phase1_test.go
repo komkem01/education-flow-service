@@ -54,6 +54,21 @@ func (m *mockAuthDB) ListMemberRolesByMemberID(ctx context.Context, memberID uui
 func (m *mockAuthDB) MemberHasAnyRole(ctx context.Context, memberID uuid.UUID, roles []ent.MemberRole) (bool, error) {
 	return false, nil
 }
+func (m *mockAuthDB) CreateSchool(ctx context.Context, school *ent.School) (*ent.School, error) {
+	return nil, errors.New("not implemented")
+}
+func (m *mockAuthDB) GetSchoolByID(ctx context.Context, id uuid.UUID) (*ent.School, error) {
+	return &ent.School{ID: id, Name: "Test School", Address: "Address"}, nil
+}
+func (m *mockAuthDB) UpdateSchoolByID(ctx context.Context, id uuid.UUID, school *ent.School) (*ent.School, error) {
+	return nil, errors.New("not implemented")
+}
+func (m *mockAuthDB) DeleteSchoolByID(ctx context.Context, id uuid.UUID) error {
+	return errors.New("not implemented")
+}
+func (m *mockAuthDB) ListSchools(ctx context.Context) ([]*ent.School, error) {
+	return nil, errors.New("not implemented")
+}
 
 func TestPhase1SwitchRoleSuccess(t *testing.T) {
 	memberID := uuid.New()
@@ -126,5 +141,30 @@ func TestPhase1AccessTokenRoundTripWithRoles(t *testing.T) {
 	}
 	if len(claims.Roles) != 2 {
 		t.Fatalf("expected 2 roles, got %d", len(claims.Roles))
+	}
+}
+
+func TestPhase1SwitchSchoolSuccessForSuperAdmin(t *testing.T) {
+	memberID := uuid.New()
+	originalSchoolID := uuid.New()
+	targetSchoolID := uuid.New()
+	db := &mockAuthDB{
+		member: &ent.Member{ID: memberID, SchoolID: originalSchoolID, IsActive: true},
+		roles:  []ent.MemberRole{ent.MemberRoleSuperAdmin, ent.MemberRoleAdmin},
+	}
+
+	svc := newService(&Options{db: db, appKey: "phase1-test-key"})
+	result, err := svc.SwitchSchool(context.Background(), &SwitchSchoolInput{
+		Claims:   &TokenClaims{MemberID: memberID, SchoolID: originalSchoolID, Role: ent.MemberRoleSuperAdmin, Roles: []ent.MemberRole{ent.MemberRoleSuperAdmin, ent.MemberRoleAdmin}},
+		SchoolID: targetSchoolID,
+	})
+	if err != nil {
+		t.Fatalf("SwitchSchool returned error: %v", err)
+	}
+	if result.SchoolID != targetSchoolID {
+		t.Fatalf("expected switched school %s, got %s", targetSchoolID, result.SchoolID)
+	}
+	if result.AccessToken == "" {
+		t.Fatalf("expected non-empty access token")
 	}
 }

@@ -42,6 +42,7 @@ type Options struct {
 }
 
 type CreateTeacherInput struct {
+	SchoolID                uuid.UUID
 	MemberID                uuid.UUID
 	GenderID                *uuid.UUID
 	PrefixID                *uuid.UUID
@@ -97,17 +98,29 @@ type RegisterTeacherWorkExperienceInput struct {
 }
 
 type ListTeachersInput struct {
+	SchoolID   uuid.UUID
 	MemberID   *uuid.UUID
 	OnlyActive bool
 }
 
-var ErrInvalidTeacherMemberRole = errors.New("invalid-teacher-member-role")
+var (
+	ErrInvalidTeacherMemberRole = errors.New("invalid-teacher-member-role")
+	ErrTeacherSchoolMismatch    = errors.New("teacher-school-mismatch")
+)
 
 func newService(opt *Options) *Service {
 	return &Service{tracer: opt.tracer, db: opt.db}
 }
 
 func (s *Service) Create(ctx context.Context, input *CreateTeacherInput) (*ent.MemberTeacher, error) {
+	member, err := s.db.GetMemberByID(ctx, input.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != input.SchoolID {
+		return nil, ErrTeacherSchoolMismatch
+	}
+
 	allowed, err := s.db.MemberHasTeacherRole(ctx, input.MemberID)
 	if err != nil {
 		return nil, err
@@ -160,14 +173,67 @@ func (s *Service) Create(ctx context.Context, input *CreateTeacherInput) (*ent.M
 }
 
 func (s *Service) List(ctx context.Context, input *ListTeachersInput) ([]*ent.MemberTeacher, error) {
-	return s.db.ListTeachers(ctx, input.MemberID, input.OnlyActive)
+	items, err := s.db.ListTeachers(ctx, input.MemberID, input.OnlyActive)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*ent.MemberTeacher, 0, len(items))
+	for _, item := range items {
+		member, err := s.db.GetMemberByID(ctx, item.MemberID)
+		if err != nil {
+			return nil, err
+		}
+		if member.SchoolID == input.SchoolID {
+			filtered = append(filtered, item)
+		}
+	}
+
+	return filtered, nil
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.MemberTeacher, error) {
 	return s.db.GetTeacherByID(ctx, id)
 }
 
+func (s *Service) GetByIDInSchool(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) (*ent.MemberTeacher, error) {
+	teacher, err := s.db.GetTeacherByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	member, err := s.db.GetMemberByID(ctx, teacher.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != schoolID {
+		return nil, ErrTeacherSchoolMismatch
+	}
+
+	return teacher, nil
+}
+
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateTeacherInput) (*ent.MemberTeacher, error) {
+	member, err := s.db.GetMemberByID(ctx, input.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if member.SchoolID != input.SchoolID {
+		return nil, ErrTeacherSchoolMismatch
+	}
+
+	existing, err := s.db.GetTeacherByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	existingMember, err := s.db.GetMemberByID(ctx, existing.MemberID)
+	if err != nil {
+		return nil, err
+	}
+	if existingMember.SchoolID != input.SchoolID {
+		return nil, ErrTeacherSchoolMismatch
+	}
+
 	allowed, err := s.db.MemberHasTeacherRole(ctx, input.MemberID)
 	if err != nil {
 		return nil, err
@@ -195,6 +261,23 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateTea
 }
 
 func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
+	return s.db.DeleteTeacherByID(ctx, id)
+}
+
+func (s *Service) DeleteByIDInSchool(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) error {
+	teacher, err := s.db.GetTeacherByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	member, err := s.db.GetMemberByID(ctx, teacher.MemberID)
+	if err != nil {
+		return err
+	}
+	if member.SchoolID != schoolID {
+		return ErrTeacherSchoolMismatch
+	}
+
 	return s.db.DeleteTeacherByID(ctx, id)
 }
 

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -47,6 +48,12 @@ type response struct {
 
 func (c *Controller) Create(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	var req createRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
@@ -58,7 +65,7 @@ func (c *Controller) Create(ctx *gin.Context) {
 		isActive = *req.IsActive
 	}
 
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateSubjectGroupInput{Code: req.Code, Name: req.Name, Head: req.Head, Description: req.Description, IsActive: isActive})
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateSubjectGroupInput{SchoolID: claims.SchoolID, Code: req.Code, Name: req.Name, Head: req.Head, Description: req.Description, IsActive: isActive})
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			base.ValidateFailed(ctx, "subject-group-duplicate", nil)
@@ -74,13 +81,19 @@ func (c *Controller) Create(ctx *gin.Context) {
 
 func (c *Controller) List(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	onlyActive, err := strconv.ParseBool(ctx.DefaultQuery("only_active", "false"))
 	if err != nil {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
 		return
 	}
 
-	items, err := c.svc.List(ctx.Request.Context(), onlyActive)
+	items, err := c.svc.List(ctx.Request.Context(), claims.SchoolID, onlyActive)
 	if err != nil {
 		log.Errf("subject-groups.list.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
@@ -96,12 +109,18 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Get(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseID(ctx)
 	if !ok {
 		return
 	}
 
-	item, err := c.svc.GetByID(ctx.Request.Context(), id)
+	item, err := c.svc.GetByIDInSchool(ctx.Request.Context(), claims.SchoolID, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, "subject-group-not-found", nil)
@@ -117,6 +136,12 @@ func (c *Controller) Get(ctx *gin.Context) {
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseID(ctx)
 	if !ok {
 		return
@@ -133,7 +158,7 @@ func (c *Controller) Update(ctx *gin.Context) {
 		isActive = *req.IsActive
 	}
 
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateSubjectGroupInput{Code: req.Code, Name: req.Name, Head: req.Head, Description: req.Description, IsActive: isActive})
+	item, err := c.svc.UpdateByIDInSchool(ctx.Request.Context(), claims.SchoolID, id, &UpdateSubjectGroupInput{Code: req.Code, Name: req.Name, Head: req.Head, Description: req.Description, IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, "subject-group-not-found", nil)
@@ -153,12 +178,22 @@ func (c *Controller) Update(ctx *gin.Context) {
 
 func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseID(ctx)
 	if !ok {
 		return
 	}
 
-	if err := c.svc.DeleteByID(ctx.Request.Context(), id); err != nil {
+	if err := c.svc.DeleteByIDInSchool(ctx.Request.Context(), claims.SchoolID, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, "subject-group-not-found", nil)
+			return
+		}
 		log.Errf("subject-groups.delete.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return

@@ -10,6 +10,7 @@ import (
 	ci18n "education-flow/config/i18n"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -23,8 +24,8 @@ func newController(trace trace.Tracer, svc *Service) *Controller {
 }
 
 type loginRequest struct {
-	Email    string `json:"email" binding:"required,email,max=255"`
-	Password string `json:"password" binding:"required,min=6,max=255"`
+	Email    string `json:"email" binding:"required,max=255"`
+	Password string `json:"password" binding:"required,max=255"`
 }
 
 type loginResponse struct {
@@ -72,6 +73,19 @@ type switchRoleResponse struct {
 	ExpiresAt   string   `json:"expires_at"`
 	Role        string   `json:"role"`
 	Roles       []string `json:"roles"`
+}
+
+type switchSchoolRequest struct {
+	SchoolID string `json:"school_id" binding:"required,uuid"`
+}
+
+type switchSchoolResponse struct {
+	AccessToken string   `json:"access_token"`
+	TokenType   string   `json:"token_type"`
+	ExpiresAt   string   `json:"expires_at"`
+	Role        string   `json:"role"`
+	Roles       []string `json:"roles"`
+	SchoolID    string   `json:"school_id"`
 }
 
 type refreshResponse = switchRoleResponse
@@ -144,7 +158,7 @@ func (c *Controller) Permissions(ctx *gin.Context) {
 		SchoolID:     claims.SchoolID.String(),
 		Roles:        toRoleStrings(claims.Roles),
 		Permissions:  permissions,
-		BackOffice:   hasRole(claims.Roles, ent.MemberRoleAdmin) || hasRole(claims.Roles, ent.MemberRoleStaff),
+		BackOffice:   hasRole(claims.Roles, ent.MemberRoleAdmin) || hasRole(claims.Roles, ent.MemberRoleStaff) || hasRole(claims.Roles, ent.MemberRoleSuperAdmin),
 		PrimaryRole:  string(primaryRoleFromClaims(claims)),
 		TokenExpires: claims.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z"),
 	})
@@ -221,6 +235,53 @@ func (c *Controller) SwitchRole(ctx *gin.Context) {
 	})
 }
 
+func (c *Controller) SwitchSchool(ctx *gin.Context) {
+	claims, ok := GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
+	var req switchSchoolRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
+
+	schoolID, err := uuid.Parse(req.SchoolID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	result, err := c.svc.SwitchSchool(ctx.Request.Context(), &SwitchSchoolInput{
+		Claims:   claims,
+		SchoolID: schoolID,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrRoleNotAllowed):
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+		case errors.Is(err, ErrSchoolNotFound):
+			base.ValidateFailed(ctx, ci18n.SchoolNotFound, nil)
+		case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrExpiredToken):
+			base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		default:
+			base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		}
+		return
+	}
+
+	base.Success(ctx, switchSchoolResponse{
+		AccessToken: result.AccessToken,
+		TokenType:   "Bearer",
+		ExpiresAt:   result.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z"),
+		Role:        string(result.Role),
+		Roles:       toRoleStrings(result.Roles),
+		SchoolID:    result.SchoolID.String(),
+	})
+}
+
 func toRoleStrings(roles []ent.MemberRole) []string {
 	out := make([]string, 0, len(roles))
 	for _, role := range roles {
@@ -264,6 +325,12 @@ func permissionsFromRoles(roles []ent.MemberRole) []string {
 			set["student:self:read"] = struct{}{}
 		case ent.MemberRoleParent:
 			set["parent:self:read"] = struct{}{}
+		case ent.MemberRoleSuperAdmin:
+			set["backoffice:read"] = struct{}{}
+			set["backoffice:write"] = struct{}{}
+			set["platform:schools:write"] = struct{}{}
+			set["platform:admins:write"] = struct{}{}
+			set["platform:scope:switch"] = struct{}{}
 		}
 	}
 

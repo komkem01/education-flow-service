@@ -14,7 +14,11 @@ type Module struct {
 	Ctl    *Controller
 }
 
-func New(conf *config.Config[Config], db entitiesinf.GradeItemEntity) *Module {
+func New(conf *config.Config[Config], db interface {
+	entitiesinf.GradeItemEntity
+	entitiesinf.MemberStudentEntity
+	entitiesinf.MemberEntity
+}) *Module {
 	tracer := otel.Tracer("education-flow.modules.student-grade-items")
 	svc := newService(&Options{Config: conf, tracer: tracer, db: db})
 

@@ -131,7 +131,7 @@ type SubjectGroupEntity interface {
 	GetSubjectGroupByID(ctx context.Context, id uuid.UUID) (*ent.SubjectGroup, error)
 	UpdateSubjectGroupByID(ctx context.Context, id uuid.UUID, subjectGroup *ent.SubjectGroup) (*ent.SubjectGroup, error)
 	DeleteSubjectGroupByID(ctx context.Context, id uuid.UUID) error
-	ListSubjectGroups(ctx context.Context, onlyActive bool) ([]*ent.SubjectGroup, error)
+	ListSubjectGroups(ctx context.Context, schoolID uuid.UUID, onlyActive bool) ([]*ent.SubjectGroup, error)
 }
 
 type DepartmentEntity interface {
@@ -147,7 +147,7 @@ type SubjectSubgroupEntity interface {
 	GetSubjectSubgroupByID(ctx context.Context, id uuid.UUID) (*ent.SubjectSubgroup, error)
 	UpdateSubjectSubgroupByID(ctx context.Context, id uuid.UUID, subjectSubgroup *ent.SubjectSubgroup) (*ent.SubjectSubgroup, error)
 	DeleteSubjectSubgroupByID(ctx context.Context, id uuid.UUID) error
-	ListSubjectSubgroups(ctx context.Context, subjectGroupID *uuid.UUID, onlyActive bool) ([]*ent.SubjectSubgroup, error)
+	ListSubjectSubgroups(ctx context.Context, schoolID uuid.UUID, subjectGroupID *uuid.UUID, onlyActive bool) ([]*ent.SubjectSubgroup, error)
 }
 
 type SubjectAssignmentEntity interface {

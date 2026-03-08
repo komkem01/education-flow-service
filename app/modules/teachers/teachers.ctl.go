@@ -254,6 +254,12 @@ func (c *Controller) Register(ctx *gin.Context) {
 
 func (c *Controller) Create(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	var req createTeacherRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
@@ -267,10 +273,14 @@ func (c *Controller) Create(ctx *gin.Context) {
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
-	teacher, err := c.svc.Create(ctx.Request.Context(), &CreateTeacherInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, TeacherCode: req.TeacherCode, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, CurrentPosition: req.CurrentPosition, CurrentAcademicStanding: req.CurrentAcademicStanding, Department: req.Department, StartDate: startDate, IsActive: isActive})
+	teacher, err := c.svc.Create(ctx.Request.Context(), &CreateTeacherInput{SchoolID: claims.SchoolID, MemberID: memberID, GenderID: genderID, PrefixID: prefixID, TeacherCode: req.TeacherCode, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, CurrentPosition: req.CurrentPosition, CurrentAcademicStanding: req.CurrentAcademicStanding, Department: req.Department, StartDate: startDate, IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, ErrInvalidTeacherMemberRole) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrTeacherSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
 			return
 		}
 		if isDuplicateKeyError(err) {
@@ -286,6 +296,12 @@ func (c *Controller) Create(ctx *gin.Context) {
 
 func (c *Controller) List(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	var memberID *uuid.UUID
 	if memberIDRaw := ctx.Query("member_id"); memberIDRaw != "" {
 		parsedMemberID, err := uuid.Parse(memberIDRaw)
@@ -300,7 +316,7 @@ func (c *Controller) List(ctx *gin.Context) {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
 		return
 	}
-	teachers, err := c.svc.List(ctx.Request.Context(), &ListTeachersInput{MemberID: memberID, OnlyActive: onlyActive})
+	teachers, err := c.svc.List(ctx.Request.Context(), &ListTeachersInput{SchoolID: claims.SchoolID, MemberID: memberID, OnlyActive: onlyActive})
 	if err != nil {
 		log.Errf("teachers.list.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
@@ -315,14 +331,24 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Get(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	teacherID, ok := parseTeacherID(ctx)
 	if !ok {
 		return
 	}
-	teacher, err := c.svc.GetByID(ctx.Request.Context(), teacherID)
+	teacher, err := c.svc.GetByIDInSchool(ctx.Request.Context(), claims.SchoolID, teacherID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.TeacherNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrTeacherSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
 			return
 		}
 		log.Errf("teachers.get.error: %v", err)
@@ -334,6 +360,12 @@ func (c *Controller) Get(ctx *gin.Context) {
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	teacherID, ok := parseTeacherID(ctx)
 	if !ok {
 		return
@@ -351,7 +383,7 @@ func (c *Controller) Update(ctx *gin.Context) {
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
-	teacher, err := c.svc.UpdateByID(ctx.Request.Context(), teacherID, &UpdateTeacherInput{MemberID: memberID, GenderID: genderID, PrefixID: prefixID, TeacherCode: req.TeacherCode, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, CurrentPosition: req.CurrentPosition, CurrentAcademicStanding: req.CurrentAcademicStanding, Department: req.Department, StartDate: startDate, IsActive: isActive})
+	teacher, err := c.svc.UpdateByID(ctx.Request.Context(), teacherID, &UpdateTeacherInput{SchoolID: claims.SchoolID, MemberID: memberID, GenderID: genderID, PrefixID: prefixID, TeacherCode: req.TeacherCode, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, CurrentPosition: req.CurrentPosition, CurrentAcademicStanding: req.CurrentAcademicStanding, Department: req.Department, StartDate: startDate, IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, ErrInvalidTeacherMemberRole) {
 			base.ValidateFailed(ctx, ci18n.MemberNotFound, nil)
@@ -365,6 +397,10 @@ func (c *Controller) Update(ctx *gin.Context) {
 			base.ValidateFailed(ctx, ci18n.TeacherCodeDuplicate, nil)
 			return
 		}
+		if errors.Is(err, ErrTeacherSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
 		log.Errf("teachers.update.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
@@ -374,11 +410,21 @@ func (c *Controller) Update(ctx *gin.Context) {
 
 func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	teacherID, ok := parseTeacherID(ctx)
 	if !ok {
 		return
 	}
-	if err := c.svc.DeleteByID(ctx.Request.Context(), teacherID); err != nil {
+	if err := c.svc.DeleteByIDInSchool(ctx.Request.Context(), claims.SchoolID, teacherID); err != nil {
+		if errors.Is(err, ErrTeacherSchoolMismatch) {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
 		log.Errf("teachers.delete.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return

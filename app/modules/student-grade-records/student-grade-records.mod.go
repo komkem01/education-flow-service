@@ -1,9 +1,13 @@
 package studentgraderecords
 
 import (
+	"context"
+
+	"education-flow/app/modules/entities/ent"
 	entitiesinf "education-flow/app/modules/entities/inf"
 	"education-flow/internal/config"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -14,7 +18,11 @@ type Module struct {
 	Ctl    *Controller
 }
 
-func New(conf *config.Config[Config], db entitiesinf.GradeRecordEntity) *Module {
+func New(conf *config.Config[Config], db interface {
+	entitiesinf.GradeRecordEntity
+	GetStudentByID(ctx context.Context, id uuid.UUID) (*ent.MemberStudent, error)
+	GetMemberByID(ctx context.Context, id uuid.UUID) (*ent.Member, error)
+}) *Module {
 	tracer := otel.Tracer("education-flow.modules.student-grade-records")
 	svc := newService(&Options{Config: conf, tracer: tracer, db: db})
 

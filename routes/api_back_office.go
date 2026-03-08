@@ -9,11 +9,12 @@ import (
 
 func apiBackOffice(r *gin.RouterGroup, mod *modules.Modules) {
 	protected := r.Group("/back-office")
-	protected.Use(requireAuth(mod), requireRoles(ent.MemberRoleAdmin, ent.MemberRoleStaff))
+	protected.Use(requireAuth(mod), requireRoles(ent.MemberRoleAdmin, ent.MemberRoleStaff, ent.MemberRoleSuperAdmin))
 
 	protected.GET("/auth/me", mod.Auth.Ctl.Me)
 	protected.GET("/auth/permissions", mod.Auth.Ctl.Permissions)
 	protected.POST("/auth/switch-role", mod.Auth.Ctl.SwitchRole)
+	protected.POST("/auth/switch-school", mod.Auth.Ctl.SwitchSchool)
 	protected.GET("/reports/filters", mod.Report.Ctl.ListFilters)
 	protected.GET("/reports/summary", mod.Report.Ctl.Summary)
 	protected.GET("/reports/approvals", mod.Report.Ctl.ListApprovals)

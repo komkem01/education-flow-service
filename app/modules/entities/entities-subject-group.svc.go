@@ -49,9 +49,9 @@ func (s *Service) DeleteSubjectGroupByID(ctx context.Context, id uuid.UUID) erro
 	return err
 }
 
-func (s *Service) ListSubjectGroups(ctx context.Context, onlyActive bool) ([]*ent.SubjectGroup, error) {
+func (s *Service) ListSubjectGroups(ctx context.Context, schoolID uuid.UUID, onlyActive bool) ([]*ent.SubjectGroup, error) {
 	items := []*ent.SubjectGroup{}
-	query := s.db.NewSelect().Model(&items).Order("name ASC")
+	query := s.db.NewSelect().Model(&items).Where("school_id = ?", schoolID).Order("name ASC")
 	if onlyActive {
 		query = query.Where("is_active = true")
 	}

@@ -15,7 +15,13 @@ import (
 
 type Service struct {
 	tracer trace.Tracer
-	db     entitiesinf.StudentAssessmentSubmissionEntity
+	db     serviceDB
+}
+
+type serviceDB interface {
+	entitiesinf.StudentAssessmentSubmissionEntity
+	entitiesinf.MemberStudentEntity
+	entitiesinf.MemberEntity
 }
 
 type Config struct{}
@@ -23,7 +29,7 @@ type Config struct{}
 type Options struct {
 	*config.Config[Config]
 	tracer trace.Tracer
-	db     entitiesinf.StudentAssessmentSubmissionEntity
+	db     serviceDB
 }
 
 type CreateInput struct {
@@ -48,7 +54,11 @@ func (s *Service) Create(ctx context.Context, input *CreateInput) (*ent.StudentA
 	return s.db.CreateStudentAssessmentSubmission(ctx, item)
 }
 
-func (s *Service) ListByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentAssessmentSubmission, error) {
+func (s *Service) ListByStudentID(ctx context.Context, schoolID uuid.UUID, studentID uuid.UUID) ([]*ent.StudentAssessmentSubmission, error) {
+	if err := s.ensureStudentInSchool(ctx, studentID, schoolID); err != nil {
+		return nil, err
+	}
+
 	return s.db.ListStudentAssessmentSubmissionsByStudentID(ctx, studentID)
 }
 
@@ -75,4 +85,21 @@ func (s *Service) DeleteByID(ctx context.Context, studentID uuid.UUID, id uuid.U
 	}
 
 	return s.db.DeleteStudentAssessmentSubmissionByID(ctx, id)
+}
+
+func (s *Service) ensureStudentInSchool(ctx context.Context, studentID uuid.UUID, schoolID uuid.UUID) error {
+	student, err := s.db.GetStudentByID(ctx, studentID)
+	if err != nil {
+		return err
+	}
+
+	member, err := s.db.GetMemberByID(ctx, student.MemberID)
+	if err != nil {
+		return err
+	}
+	if member.SchoolID != schoolID {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
