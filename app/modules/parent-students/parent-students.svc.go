@@ -76,6 +76,10 @@ func (s *Service) ListByParentID(ctx context.Context, parentID uuid.UUID) ([]*en
 	return s.db.ListParentStudentsByParentID(ctx, parentID)
 }
 
+func (s *Service) ListByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentParent, error) {
+	return s.db.ListParentStudentsByStudentID(ctx, studentID)
+}
+
 func (s *Service) UpdateByID(ctx context.Context, parentID uuid.UUID, id uuid.UUID, input *UpdateInput) (*ent.MemberParentStudent, error) {
 	parentExists, err := s.db.ParentExistsByID(ctx, parentID)
 	if err != nil {

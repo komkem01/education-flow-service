@@ -41,6 +41,7 @@ func apiBackOffice(r *gin.RouterGroup, mod *modules.Modules) {
 	registerCRUD(protected, "/staffs", mod.Staff.Ctl.List, mod.Staff.Ctl.Get, mod.Staff.Ctl.Create, mod.Staff.Ctl.Update, mod.Staff.Ctl.Delete)
 	registerCRUD(protected, "/teachers", mod.Teacher.Ctl.List, mod.Teacher.Ctl.Get, mod.Teacher.Ctl.Create, mod.Teacher.Ctl.Update, mod.Teacher.Ctl.Delete)
 	registerCRUD(protected, "/students", mod.Student.Ctl.List, mod.Student.Ctl.Get, mod.Student.Ctl.Create, mod.Student.Ctl.Update, mod.Student.Ctl.Delete)
+	protected.GET("/students/:id/parents", mod.ParentStudents.Ctl.ListByStudent)
 	protected.GET("/parents", mod.Parent.Ctl.List)
 	protected.POST("/parents", mod.Parent.Ctl.Create)
 	protected.GET("/parents/:id", mod.Parent.Ctl.Get)

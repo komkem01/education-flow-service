@@ -12,6 +12,7 @@ import (
 	"time"
 
 	datachangelogs "education-flow/app/modules/data-change-logs"
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules"
 	systemauditlogs "education-flow/app/modules/system-audit-logs"
 
@@ -135,10 +136,7 @@ func auditLogMiddleware(mod *modules.Modules) gin.HandlerFunc {
 			spanID = &s
 		}
 
-		actorType := "anonymous"
-		if memberID != nil {
-			actorType = "member"
-		}
+		actorType := resolveActorType(ctx, memberID)
 
 		enqueueAuditLog(&auditQueueItem{auditInput: &systemauditlogs.CreateInput{
 			MemberID:        memberID,
@@ -166,6 +164,28 @@ func auditLogMiddleware(mod *modules.Modules) gin.HandlerFunc {
 			DurationMS:      &duration,
 		}, oldValues: oldValues})
 	}
+}
+
+func resolveActorType(ctx *gin.Context, memberID *uuid.UUID) string {
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if ok {
+		if role := strings.TrimSpace(strings.ToLower(string(claims.Role))); role != "" {
+			return role
+		}
+
+		for _, role := range claims.Roles {
+			value := strings.TrimSpace(strings.ToLower(string(role)))
+			if value != "" {
+				return value
+			}
+		}
+	}
+
+	if memberID != nil {
+		return "member"
+	}
+
+	return "anonymous"
 }
 
 func initAuditWorker(mod *modules.Modules) {

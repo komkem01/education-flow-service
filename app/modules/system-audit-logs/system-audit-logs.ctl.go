@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -260,6 +261,24 @@ func enrichAuditContext(ctx *gin.Context, req *createRequest) {
 	if req.RequestID == nil {
 		if value := strings.TrimSpace(ctx.GetHeader("X-Request-ID")); value != "" {
 			req.RequestID = &value
+		}
+	}
+
+	if claims, ok := auth.GetClaimsFromGin(ctx); ok {
+		// Always persist actor type from active authenticated role to prevent spoofed values.
+		role := strings.TrimSpace(strings.ToLower(string(claims.Role)))
+		if role == "" {
+			for _, r := range claims.Roles {
+				value := strings.TrimSpace(strings.ToLower(string(r)))
+				if value != "" {
+					role = value
+					break
+				}
+			}
+		}
+
+		if role != "" {
+			req.ActorType = &role
 		}
 	}
 }

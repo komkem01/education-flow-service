@@ -272,6 +272,7 @@ type MemberParentStudentEntity interface {
 	UpdateParentStudentByID(ctx context.Context, id uuid.UUID, parentStudent *ent.MemberParentStudent) (*ent.MemberParentStudent, error)
 	DeleteParentStudentByID(ctx context.Context, id uuid.UUID) error
 	ListParentStudentsByParentID(ctx context.Context, parentID uuid.UUID) ([]*ent.MemberParentStudent, error)
+	ListParentStudentsByStudentID(ctx context.Context, studentID uuid.UUID) ([]*ent.StudentParent, error)
 	ParentStudentBelongsToParent(ctx context.Context, id uuid.UUID, parentID uuid.UUID) (bool, error)
 	ParentExistsByID(ctx context.Context, parentID uuid.UUID) (bool, error)
 	StudentExistsByID(ctx context.Context, studentID uuid.UUID) (bool, error)

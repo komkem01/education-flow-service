@@ -46,6 +46,23 @@ type response struct {
 	CreatedAt      string `json:"created_at"`
 }
 
+type studentParentResponse struct {
+	ID              string  `json:"id"`
+	ParentID        string  `json:"parent_id"`
+	StudentID       string  `json:"student_id"`
+	Relationship    string  `json:"relationship"`
+	IsMainGuardian  bool    `json:"is_main_guardian"`
+	CreatedAt       string  `json:"created_at"`
+	ParentMemberID  string  `json:"parent_member_id"`
+	ParentGenderID  *string `json:"parent_gender_id"`
+	ParentPrefixID  *string `json:"parent_prefix_id"`
+	ParentCode      *string `json:"parent_code"`
+	ParentFirstName *string `json:"parent_first_name"`
+	ParentLastName  *string `json:"parent_last_name"`
+	ParentPhone     *string `json:"parent_phone"`
+	ParentIsActive  bool    `json:"parent_is_active"`
+}
+
 func (c *Controller) Create(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
 	parentID, _, ok := parseIDs(ctx, false)
@@ -109,6 +126,29 @@ func (c *Controller) List(ctx *gin.Context) {
 	responseList := make([]response, 0, len(items))
 	for _, item := range items {
 		responseList = append(responseList, toResponse(item))
+	}
+
+	base.Success(ctx, responseList)
+}
+
+func (c *Controller) ListByStudent(ctx *gin.Context) {
+	_, log := utils.LogSpanFromGin(ctx)
+	studentID, err := utils.ParsePathUUID(ctx, "id")
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	items, err := c.svc.ListByStudentID(ctx.Request.Context(), studentID)
+	if err != nil {
+		log.Errf("parent-students.list-by-student.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
+	responseList := make([]studentParentResponse, 0, len(items))
+	for _, item := range items {
+		responseList = append(responseList, toStudentParentResponse(item))
 	}
 
 	base.Success(ctx, responseList)
@@ -199,4 +239,23 @@ func parseIDs(ctx *gin.Context, childRequired bool) (uuid.UUID, uuid.UUID, bool)
 
 func toResponse(item *ent.MemberParentStudent) response {
 	return response{ID: item.ID.String(), ParentID: item.ParentID.String(), StudentID: item.StudentID.String(), Relationship: string(item.Relationship), IsMainGuardian: item.IsMainGuardian, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout)}
+}
+
+func toStudentParentResponse(item *ent.StudentParent) studentParentResponse {
+	return studentParentResponse{
+		ID:              item.ID.String(),
+		ParentID:        item.ParentID.String(),
+		StudentID:       item.StudentID.String(),
+		Relationship:    string(item.Relationship),
+		IsMainGuardian:  item.IsMainGuardian,
+		CreatedAt:       item.CreatedAt.UTC().Format(dateTimeLayout),
+		ParentMemberID:  item.ParentMemberID.String(),
+		ParentGenderID:  utils.UUIDToStringPtr(item.ParentGenderID),
+		ParentPrefixID:  utils.UUIDToStringPtr(item.ParentPrefixID),
+		ParentCode:      item.ParentCode,
+		ParentFirstName: item.ParentFirstName,
+		ParentLastName:  item.ParentLastName,
+		ParentPhone:     item.ParentPhone,
+		ParentIsActive:  item.ParentIsActive,
+	}
 }
