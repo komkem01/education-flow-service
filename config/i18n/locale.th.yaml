@@ -11,6 +11,11 @@ prefix-not-found: ไม่พบข้อมูลคำนำหน้า
 academic-year-not-found: ไม่พบข้อมูลปีการศึกษา
 classroom-not-found: ไม่พบข้อมูลห้องเรียน
 subject-not-found: ไม่พบข้อมูลรายวิชา
+department-not-found: ไม่พบข้อมูลฝ่ายงาน
+subject-group-not-found: ไม่พบข้อมูลกลุ่มสาระ
+subject-subgroup-not-found: ไม่พบข้อมูลกลุ่มย่อยสาระ
+subject-subgroup-group-mismatch: กลุ่มย่อยสาระไม่อยู่ภายใต้กลุ่มสาระที่เลือก
+subject-subgroup-requires-group: ต้องเลือกกลุ่มสาระหลักเมื่อระบุกลุ่มย่อยสาระ
 subject-assignment-not-found: ไม่พบข้อมูลการมอบหมายรายวิชา
 schedule-not-found: ไม่พบข้อมูลตารางเรียน
 question-bank-not-found: ไม่พบข้อมูลคลังข้อสอบ
@@ -28,6 +33,7 @@ gender-name-duplicate: ชื่อเพศนี้มีอยู่แล้
 prefix-name-duplicate: ชื่อคำนำหน้านี้มีอยู่แล้ว
 academic-year-duplicate: ปีการศึกษานี้มีอยู่แล้ว
 subject-code-duplicate: รหัสรายวิชานี้มีอยู่แล้วในโรงเรียน
+department-code-duplicate: รหัสฝ่ายงานนี้มีอยู่แล้วในโรงเรียน
 subject-assignment-duplicate: การมอบหมายรายวิชานี้ซ้ำในห้อง ครู รายวิชา ปีการศึกษา และภาคเรียนเดียวกัน
 subject-assignment-invalid-date-range: วันที่สิ้นสุดของการมอบหมายรายวิชาต้องมากกว่าหรือเท่ากับวันที่เริ่มต้น
 schedule-duplicate: ตารางเรียนซ้ำในช่วงเวลาเดียวกันของการมอบหมายนี้

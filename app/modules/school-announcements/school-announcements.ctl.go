@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
@@ -19,6 +20,7 @@ import (
 )
 
 const dateTimeLayout = "2006-01-02T15:04:05Z07:00"
+const dateOnlyLayout = "2006-01-02"
 
 type Controller struct {
 	tracer trace.Tracer
@@ -30,12 +32,17 @@ func newController(trace trace.Tracer, svc *Service) *Controller {
 }
 
 type createRequest struct {
-	SchoolID       string  `json:"school_id" binding:"required,uuid"`
-	AuthorMemberID string  `json:"author_member_id" binding:"required,uuid"`
-	Title          *string `json:"title" binding:"omitempty,max=255"`
-	Content        *string `json:"content"`
-	TargetRole     *string `json:"target_role" binding:"omitempty,oneof=student teacher admin staff parent"`
-	IsPinned       bool    `json:"is_pinned"`
+	SchoolID      string  `json:"school_id" binding:"required,uuid"`
+	Title         *string `json:"title" binding:"omitempty,max=255"`
+	Content       *string `json:"content"`
+	Category      *string `json:"category" binding:"omitempty,max=100"`
+	Status        *string `json:"status" binding:"omitempty,oneof=draft published expired"`
+	AnnouncedAt   *string `json:"announced_at"`
+	PublishedAt   *string `json:"published_at"`
+	ExpiresAt     *string `json:"expires_at"`
+	CreatedByName *string `json:"created_by_name" binding:"omitempty,max=255"`
+	TargetRole    *string `json:"target_role" binding:"omitempty,oneof=student teacher admin staff parent"`
+	IsPinned      bool    `json:"is_pinned"`
 }
 
 type updateRequest = createRequest
@@ -46,6 +53,12 @@ type response struct {
 	AuthorMemberID string  `json:"author_member_id"`
 	Title          *string `json:"title"`
 	Content        *string `json:"content"`
+	Category       *string `json:"category"`
+	Status         string  `json:"status"`
+	AnnouncedAt    *string `json:"announced_at"`
+	PublishedAt    *string `json:"published_at"`
+	ExpiresAt      *string `json:"expires_at"`
+	CreatedByName  *string `json:"created_by_name"`
 	TargetRole     *string `json:"target_role"`
 	IsPinned       bool    `json:"is_pinned"`
 	CreatedAt      string  `json:"created_at"`
@@ -60,16 +73,31 @@ func (c *Controller) Create(ctx *gin.Context) {
 		return
 	}
 
-	schoolID, authorID, role, ok := parseCreateUpdateFields(ctx, req.SchoolID, req.AuthorMemberID, req.TargetRole)
-	if !ok {
-		return
-	}
-	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+	claims, hasClaims := auth.GetClaimsFromGin(ctx)
+	if !hasClaims {
 		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{SchoolID: schoolID, AuthorMemberID: authorID, Title: req.Title, Content: req.Content, TargetRole: role, IsPinned: req.IsPinned})
+	schoolID, role, ok := parseCreateUpdateFields(ctx, req.SchoolID, req.TargetRole)
+	if !ok {
+		return
+	}
+	if claims.SchoolID != schoolID {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
+
+	announcedAt, publishedAt, expiresAt, ok := parseDateRange(ctx, req.AnnouncedAt, req.PublishedAt, req.ExpiresAt)
+	if !ok {
+		return
+	}
+	status := "published"
+	if req.Status != nil {
+		status = strings.TrimSpace(*req.Status)
+	}
+
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateInput{SchoolID: schoolID, AuthorMemberID: claims.MemberID, Title: req.Title, Content: req.Content, Category: req.Category, Status: status, AnnouncedAt: announcedAt, PublishedAt: publishedAt, ExpiresAt: expiresAt, CreatedByName: req.CreatedByName, TargetRole: role, IsPinned: req.IsPinned})
 	if err != nil {
 		if errors.Is(err, ErrSchoolNotFound) {
 			base.ValidateFailed(ctx, ci18n.SchoolNotFound, nil)
@@ -176,11 +204,17 @@ func (c *Controller) Update(ctx *gin.Context) {
 		base.BadRequest(ctx, ci18n.BadRequest, nil)
 		return
 	}
-	schoolID, authorID, role, ok := parseCreateUpdateFields(ctx, req.SchoolID, req.AuthorMemberID, req.TargetRole)
+	claims, hasClaims := auth.GetClaimsFromGin(ctx)
+	if !hasClaims {
+		base.Forbidden(ctx, ci18n.Forbidden, nil)
+		return
+	}
+
+	schoolID, role, ok := parseCreateUpdateFields(ctx, req.SchoolID, req.TargetRole)
 	if !ok {
 		return
 	}
-	if claims, ok := auth.GetClaimsFromGin(ctx); ok && claims.SchoolID != schoolID {
+	if claims.SchoolID != schoolID {
 		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
@@ -195,12 +229,21 @@ func (c *Controller) Update(ctx *gin.Context) {
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
 	}
-	if claims, ok := auth.GetClaimsFromGin(ctx); ok && existing.SchoolID != claims.SchoolID {
+	if existing.SchoolID != claims.SchoolID {
 		base.Forbidden(ctx, ci18n.Forbidden, nil)
 		return
 	}
 
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateInput{SchoolID: schoolID, AuthorMemberID: authorID, Title: req.Title, Content: req.Content, TargetRole: role, IsPinned: req.IsPinned})
+	announcedAt, publishedAt, expiresAt, ok := parseDateRange(ctx, req.AnnouncedAt, req.PublishedAt, req.ExpiresAt)
+	if !ok {
+		return
+	}
+	status := "published"
+	if req.Status != nil {
+		status = strings.TrimSpace(*req.Status)
+	}
+
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateInput{SchoolID: schoolID, AuthorMemberID: claims.MemberID, Title: req.Title, Content: req.Content, Category: req.Category, Status: status, AnnouncedAt: announcedAt, PublishedAt: publishedAt, ExpiresAt: expiresAt, CreatedByName: req.CreatedByName, TargetRole: role, IsPinned: req.IsPinned})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.SchoolAnnouncementNotFound, nil)
@@ -266,27 +309,70 @@ func parseID(ctx *gin.Context) (uuid.UUID, bool) {
 	return id, true
 }
 
-func parseCreateUpdateFields(ctx *gin.Context, schoolIDRaw string, authorIDRaw string, roleRaw *string) (uuid.UUID, uuid.UUID, *ent.MemberRole, bool) {
+func parseCreateUpdateFields(ctx *gin.Context, schoolIDRaw string, roleRaw *string) (uuid.UUID, *ent.MemberRole, bool) {
 	schoolID, err := uuid.Parse(schoolIDRaw)
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
-		return uuid.Nil, uuid.Nil, nil, false
-	}
-	authorID, err := uuid.Parse(authorIDRaw)
-	if err != nil {
-		base.BadRequest(ctx, ci18n.InvalidID, nil)
-		return uuid.Nil, uuid.Nil, nil, false
+		return uuid.Nil, nil, false
 	}
 	var role *ent.MemberRole
 	if roleRaw != nil {
 		v := ent.ToMemberRole(*roleRaw)
 		role = &v
 	}
-	return schoolID, authorID, role, true
+	return schoolID, role, true
 }
 
 func toResponse(item *ent.SchoolAnnouncement) response {
-	return response{ID: item.ID.String(), SchoolID: item.SchoolID.String(), AuthorMemberID: item.AuthorMemberID.String(), Title: item.Title, Content: item.Content, TargetRole: memberRoleToStringPtr(item.TargetRole), IsPinned: item.IsPinned, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout), UpdatedAt: item.UpdatedAt.UTC().Format(dateTimeLayout)}
+	return response{ID: item.ID.String(), SchoolID: item.SchoolID.String(), AuthorMemberID: item.AuthorMemberID.String(), Title: item.Title, Content: item.Content, Category: item.Category, Status: item.Status, AnnouncedAt: formatDatePtr(item.AnnouncedAt), PublishedAt: formatDatePtr(item.PublishedAt), ExpiresAt: formatDatePtr(item.ExpiresAt), CreatedByName: item.CreatedByName, TargetRole: memberRoleToStringPtr(item.TargetRole), IsPinned: item.IsPinned, CreatedAt: item.CreatedAt.UTC().Format(dateTimeLayout), UpdatedAt: item.UpdatedAt.UTC().Format(dateTimeLayout)}
+}
+
+func parseDateRange(ctx *gin.Context, announcedAtRaw *string, publishedAtRaw *string, expiresAtRaw *string) (*time.Time, *time.Time, *time.Time, bool) {
+	announcedAt, err := parseDatePtr(announcedAtRaw)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return nil, nil, nil, false
+	}
+
+	publishedAt, err := parseDatePtr(publishedAtRaw)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return nil, nil, nil, false
+	}
+	expiresAt, err := parseDatePtr(expiresAtRaw)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return nil, nil, nil, false
+	}
+	if announcedAt != nil && publishedAt != nil && publishedAt.Before(*announcedAt) {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return nil, nil, nil, false
+	}
+	if publishedAt != nil && expiresAt != nil && expiresAt.Before(*publishedAt) {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return nil, nil, nil, false
+	}
+
+	return announcedAt, publishedAt, expiresAt, true
+}
+
+func parseDatePtr(raw *string) (*time.Time, error) {
+	if raw == nil || strings.TrimSpace(*raw) == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(dateOnlyLayout, strings.TrimSpace(*raw))
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
+func formatDatePtr(value *time.Time) *string {
+	if value == nil {
+		return nil
+	}
+	formatted := value.UTC().Format(dateOnlyLayout)
+	return &formatted
 }
 
 func memberRoleToStringPtr(role *ent.MemberRole) *string {

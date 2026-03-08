@@ -27,7 +27,13 @@ type Subject struct {
 	AssessmentCriteria *string     `bun:"assessment_criteria"`
 	GradeLevel         *string     `bun:"grade_level"`
 	Category           *string     `bun:"category"`
+	SubjectGroupID     *uuid.UUID  `bun:"subject_group_id,type:uuid"`
+	SubjectSubgroupID  *uuid.UUID  `bun:"subject_subgroup_id,type:uuid"`
 	Credits            *float64    `bun:"credits"`
+	HoursPerWeek       *int        `bun:"hours_per_week"`
+	Semester           *int        `bun:"semester"`
+	AcademicYearID     *uuid.UUID  `bun:"academic_year_id,type:uuid"`
+	TeacherName        *string     `bun:"teacher_name"`
 	Type               SubjectType `bun:"type"`
 	IsActive           bool        `bun:"is_active,notnull,default:true"`
 }

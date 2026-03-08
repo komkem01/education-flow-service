@@ -46,6 +46,22 @@ type SchoolAnnouncementEntity interface {
 	ListSchoolAnnouncements(ctx context.Context, schoolID *uuid.UUID, targetRole *ent.MemberRole, onlyPinned bool) ([]*ent.SchoolAnnouncement, error)
 }
 
+type StudentBehaviorEntity interface {
+	CreateStudentBehavior(ctx context.Context, item *ent.StudentBehavior) (*ent.StudentBehavior, error)
+	GetStudentBehaviorByID(ctx context.Context, id uuid.UUID) (*ent.StudentBehavior, error)
+	UpdateStudentBehaviorByID(ctx context.Context, id uuid.UUID, item *ent.StudentBehavior) (*ent.StudentBehavior, error)
+	DeleteStudentBehaviorByID(ctx context.Context, id uuid.UUID) error
+	ListStudentBehaviors(ctx context.Context, schoolID *uuid.UUID, studentID *uuid.UUID, behaviorType *ent.StudentBehaviorType, onlyActive bool) ([]*ent.StudentBehavior, error)
+}
+
+type SchoolCalendarEventEntity interface {
+	CreateSchoolCalendarEvent(ctx context.Context, item *ent.SchoolCalendarEvent) (*ent.SchoolCalendarEvent, error)
+	GetSchoolCalendarEventByID(ctx context.Context, id uuid.UUID) (*ent.SchoolCalendarEvent, error)
+	UpdateSchoolCalendarEventByID(ctx context.Context, id uuid.UUID, item *ent.SchoolCalendarEvent) (*ent.SchoolCalendarEvent, error)
+	DeleteSchoolCalendarEventByID(ctx context.Context, id uuid.UUID) error
+	ListSchoolCalendarEvents(ctx context.Context, schoolID *uuid.UUID, eventType *ent.SchoolCalendarEventType, onlyActive bool) ([]*ent.SchoolCalendarEvent, error)
+}
+
 type SystemAuditLogEntity interface {
 	CreateSystemAuditLog(ctx context.Context, auditLog *ent.SystemAuditLog) (*ent.SystemAuditLog, error)
 	GetSystemAuditLogByID(ctx context.Context, id uuid.UUID) (*ent.SystemAuditLog, error)
@@ -108,6 +124,30 @@ type SubjectEntity interface {
 	UpdateSubjectByID(ctx context.Context, id uuid.UUID, subject *ent.Subject) (*ent.Subject, error)
 	DeleteSubjectByID(ctx context.Context, id uuid.UUID) error
 	ListSubjects(ctx context.Context, schoolID *uuid.UUID) ([]*ent.Subject, error)
+}
+
+type SubjectGroupEntity interface {
+	CreateSubjectGroup(ctx context.Context, subjectGroup *ent.SubjectGroup) (*ent.SubjectGroup, error)
+	GetSubjectGroupByID(ctx context.Context, id uuid.UUID) (*ent.SubjectGroup, error)
+	UpdateSubjectGroupByID(ctx context.Context, id uuid.UUID, subjectGroup *ent.SubjectGroup) (*ent.SubjectGroup, error)
+	DeleteSubjectGroupByID(ctx context.Context, id uuid.UUID) error
+	ListSubjectGroups(ctx context.Context, onlyActive bool) ([]*ent.SubjectGroup, error)
+}
+
+type DepartmentEntity interface {
+	CreateDepartment(ctx context.Context, department *ent.Department) (*ent.Department, error)
+	GetDepartmentByID(ctx context.Context, id uuid.UUID) (*ent.Department, error)
+	UpdateDepartmentByID(ctx context.Context, id uuid.UUID, department *ent.Department) (*ent.Department, error)
+	DeleteDepartmentByID(ctx context.Context, id uuid.UUID) error
+	ListDepartments(ctx context.Context, schoolID *uuid.UUID, onlyActive bool) ([]*ent.Department, error)
+}
+
+type SubjectSubgroupEntity interface {
+	CreateSubjectSubgroup(ctx context.Context, subjectSubgroup *ent.SubjectSubgroup) (*ent.SubjectSubgroup, error)
+	GetSubjectSubgroupByID(ctx context.Context, id uuid.UUID) (*ent.SubjectSubgroup, error)
+	UpdateSubjectSubgroupByID(ctx context.Context, id uuid.UUID, subjectSubgroup *ent.SubjectSubgroup) (*ent.SubjectSubgroup, error)
+	DeleteSubjectSubgroupByID(ctx context.Context, id uuid.UUID) error
+	ListSubjectSubgroups(ctx context.Context, subjectGroupID *uuid.UUID, onlyActive bool) ([]*ent.SubjectSubgroup, error)
 }
 
 type SubjectAssignmentEntity interface {

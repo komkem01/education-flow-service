@@ -6,10 +6,11 @@ import (
 
 	academicyears "education-flow/app/modules/academic-years"
 	"education-flow/app/modules/admins"
-	"education-flow/app/modules/auth"
 	assessmentsets "education-flow/app/modules/assessment-sets"
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/classrooms"
 	datachangelogs "education-flow/app/modules/data-change-logs"
+	"education-flow/app/modules/departments"
 	documenttracking "education-flow/app/modules/document-tracking"
 	"education-flow/app/modules/entities"
 	"education-flow/app/modules/example"
@@ -25,6 +26,7 @@ import (
 	questionchoices "education-flow/app/modules/question-choices"
 	"education-flow/app/modules/schedules"
 	schoolannouncements "education-flow/app/modules/school-announcements"
+	schoolcalendarevents "education-flow/app/modules/school-calendar-events"
 	"education-flow/app/modules/schools"
 	"education-flow/app/modules/sentry"
 	"education-flow/app/modules/specs"
@@ -33,6 +35,7 @@ import (
 	"education-flow/app/modules/storages"
 	studentassessmentsubmissions "education-flow/app/modules/student-assessment-submissions"
 	studentattendancelogs "education-flow/app/modules/student-attendance-logs"
+	studentbehaviors "education-flow/app/modules/student-behaviors"
 	studentenrollments "education-flow/app/modules/student-enrollments"
 	studentfeecategories "education-flow/app/modules/student-fee-categories"
 	studentgradeitems "education-flow/app/modules/student-grade-items"
@@ -40,6 +43,8 @@ import (
 	studentinvoices "education-flow/app/modules/student-invoices"
 	"education-flow/app/modules/students"
 	subjectassignments "education-flow/app/modules/subject-assignments"
+	subjectgroups "education-flow/app/modules/subject-groups"
+	subjectsubgroups "education-flow/app/modules/subject-subgroups"
 	"education-flow/app/modules/subjects"
 	systemauditlogs "education-flow/app/modules/system-audit-logs"
 	teachereducations "education-flow/app/modules/teacher-educations"
@@ -73,7 +78,10 @@ type Modules struct {
 	Gender                       *genders.Module
 	Prefix                       *prefixes.Module
 	Classroom                    *classrooms.Module
+	Department                   *departments.Module
 	Subject                      *subjects.Module
+	SubjectGroup                 *subjectgroups.Module
+	SubjectSubgroup              *subjectsubgroups.Module
 	SubjectAssignment            *subjectassignments.Module
 	Schedule                     *schedules.Module
 	QuestionBank                 *questionbanks.Module
@@ -83,6 +91,8 @@ type Modules struct {
 	InventoryRequest             *inventoryrequests.Module
 	DocumentTracking             *documenttracking.Module
 	SchoolAnnouncement           *schoolannouncements.Module
+	SchoolCalendarEvent          *schoolcalendarevents.Module
+	StudentBehavior              *studentbehaviors.Module
 	SystemAuditLog               *systemauditlogs.Module
 	DataChangeLog                *datachangelogs.Module
 	Storage                      *storages.Module
@@ -132,7 +142,10 @@ func modulesInit() {
 	genderMod := genders.New(config.Conf[genders.Config](confMod.Svc), entitiesMod.Svc)
 	prefixMod := prefixes.New(config.Conf[prefixes.Config](confMod.Svc), entitiesMod.Svc)
 	classroomMod := classrooms.New(config.Conf[classrooms.Config](confMod.Svc), entitiesMod.Svc)
-	subjectMod := subjects.New(config.Conf[subjects.Config](confMod.Svc), entitiesMod.Svc)
+	departmentMod := departments.New(config.Conf[departments.Config](confMod.Svc), entitiesMod.Svc)
+	subjectMod := subjects.New(config.Conf[subjects.Config](confMod.Svc), entitiesMod.Svc, entitiesMod.Svc, entitiesMod.Svc)
+	subjectGroupMod := subjectgroups.New(config.Conf[subjectgroups.Config](confMod.Svc), entitiesMod.Svc)
+	subjectSubgroupMod := subjectsubgroups.New(config.Conf[subjectsubgroups.Config](confMod.Svc), entitiesMod.Svc)
 	subjectAssignmentMod := subjectassignments.New(config.Conf[subjectassignments.Config](confMod.Svc), entitiesMod.Svc)
 	scheduleMod := schedules.New(config.Conf[schedules.Config](confMod.Svc), entitiesMod.Svc)
 	questionBankMod := questionbanks.New(config.Conf[questionbanks.Config](confMod.Svc), entitiesMod.Svc)
@@ -142,6 +155,8 @@ func modulesInit() {
 	inventoryRequestMod := inventoryrequests.New(config.Conf[inventoryrequests.Config](confMod.Svc), entitiesMod.Svc)
 	documentTrackingMod := documenttracking.New(config.Conf[documenttracking.Config](confMod.Svc), entitiesMod.Svc)
 	schoolAnnouncementMod := schoolannouncements.New(config.Conf[schoolannouncements.Config](confMod.Svc), entitiesMod.Svc)
+	schoolCalendarEventMod := schoolcalendarevents.New(config.Conf[schoolcalendarevents.Config](confMod.Svc), entitiesMod.Svc)
+	studentBehaviorMod := studentbehaviors.New(config.Conf[studentbehaviors.Config](confMod.Svc), entitiesMod.Svc)
 	systemAuditLogMod := systemauditlogs.New(config.Conf[systemauditlogs.Config](confMod.Svc), entitiesMod.Svc)
 	dataChangeLogMod := datachangelogs.New(config.Conf[datachangelogs.Config](confMod.Svc), entitiesMod.Svc)
 	storageMod := storages.New(config.Conf[storages.Config](confMod.Svc), entitiesMod.Svc)
@@ -184,7 +199,10 @@ func modulesInit() {
 		Gender:                       genderMod,
 		Prefix:                       prefixMod,
 		Classroom:                    classroomMod,
+		Department:                   departmentMod,
 		Subject:                      subjectMod,
+		SubjectGroup:                 subjectGroupMod,
+		SubjectSubgroup:              subjectSubgroupMod,
 		SubjectAssignment:            subjectAssignmentMod,
 		Schedule:                     scheduleMod,
 		QuestionBank:                 questionBankMod,
@@ -194,6 +212,8 @@ func modulesInit() {
 		InventoryRequest:             inventoryRequestMod,
 		DocumentTracking:             documentTrackingMod,
 		SchoolAnnouncement:           schoolAnnouncementMod,
+		SchoolCalendarEvent:          schoolCalendarEventMod,
+		StudentBehavior:              studentBehaviorMod,
 		SystemAuditLog:               systemAuditLogMod,
 		DataChangeLog:                dataChangeLogMod,
 		Storage:                      storageMod,

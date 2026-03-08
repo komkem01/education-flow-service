@@ -42,7 +42,13 @@ func (s *Service) UpdateSubjectByID(ctx context.Context, id uuid.UUID, subject *
 		Set("assessment_criteria = ?", subject.AssessmentCriteria).
 		Set("grade_level = ?", subject.GradeLevel).
 		Set("category = ?", subject.Category).
+		Set("subject_group_id = ?", subject.SubjectGroupID).
+		Set("subject_subgroup_id = ?", subject.SubjectSubgroupID).
 		Set("credits = ?", subject.Credits).
+		Set("hours_per_week = ?", subject.HoursPerWeek).
+		Set("semester = ?", subject.Semester).
+		Set("academic_year_id = ?", subject.AcademicYearID).
+		Set("teacher_name = ?", subject.TeacherName).
 		Set("type = ?", subject.Type).
 		Set("is_active = ?", subject.IsActive).
 		Where("id = ?", id).

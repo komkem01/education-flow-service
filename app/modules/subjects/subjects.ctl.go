@@ -36,7 +36,13 @@ type createSubjectRequest struct {
 	AssessmentCriteria *string  `json:"assessment_criteria" binding:"omitempty,max=4000"`
 	GradeLevel         *string  `json:"grade_level" binding:"omitempty,max=50"`
 	Category           *string  `json:"category" binding:"omitempty,max=100"`
+	SubjectGroupID     *string  `json:"subject_group_id" binding:"omitempty,uuid"`
+	SubjectSubgroupID  *string  `json:"subject_subgroup_id" binding:"omitempty,uuid"`
 	Credits            *float64 `json:"credits" binding:"omitempty,gte=0"`
+	HoursPerWeek       *int     `json:"hours_per_week" binding:"omitempty,gte=0"`
+	Semester           *int     `json:"semester" binding:"omitempty,min=1,max=2"`
+	AcademicYearID     *string  `json:"academic_year_id" binding:"omitempty,uuid"`
+	TeacherName        *string  `json:"teacher_name" binding:"omitempty,max=255"`
 	Type               string   `json:"type" binding:"omitempty,oneof=core elective activity"`
 	IsActive           *bool    `json:"is_active"`
 }
@@ -52,7 +58,13 @@ type updateSubjectRequest struct {
 	AssessmentCriteria *string  `json:"assessment_criteria" binding:"omitempty,max=4000"`
 	GradeLevel         *string  `json:"grade_level" binding:"omitempty,max=50"`
 	Category           *string  `json:"category" binding:"omitempty,max=100"`
+	SubjectGroupID     *string  `json:"subject_group_id" binding:"omitempty,uuid"`
+	SubjectSubgroupID  *string  `json:"subject_subgroup_id" binding:"omitempty,uuid"`
 	Credits            *float64 `json:"credits" binding:"omitempty,gte=0"`
+	HoursPerWeek       *int     `json:"hours_per_week" binding:"omitempty,gte=0"`
+	Semester           *int     `json:"semester" binding:"omitempty,min=1,max=2"`
+	AcademicYearID     *string  `json:"academic_year_id" binding:"omitempty,uuid"`
+	TeacherName        *string  `json:"teacher_name" binding:"omitempty,max=255"`
 	Type               string   `json:"type" binding:"required,oneof=core elective activity"`
 	IsActive           *bool    `json:"is_active"`
 }
@@ -69,7 +81,13 @@ type subjectResponse struct {
 	AssessmentCriteria *string  `json:"assessment_criteria"`
 	GradeLevel         *string  `json:"grade_level"`
 	Category           *string  `json:"category"`
+	SubjectGroupID     *string  `json:"subject_group_id"`
+	SubjectSubgroupID  *string  `json:"subject_subgroup_id"`
 	Credits            *float64 `json:"credits"`
+	HoursPerWeek       *int     `json:"hours_per_week"`
+	Semester           *int     `json:"semester"`
+	AcademicYearID     *string  `json:"academic_year_id"`
+	TeacherName        *string  `json:"teacher_name"`
 	Type               string   `json:"type"`
 	IsActive           bool     `json:"is_active"`
 }
@@ -98,8 +116,42 @@ func (c *Controller) Create(ctx *gin.Context) {
 		isActive = *req.IsActive
 	}
 
-	item, err := c.svc.Create(ctx.Request.Context(), &CreateSubjectInput{SchoolID: schoolID, SubjectCode: req.SubjectCode, Name: req.Name, NameEN: req.NameEN, Description: req.Description, LearningObjectives: req.LearningObjectives, LearningOutcomes: req.LearningOutcomes, AssessmentCriteria: req.AssessmentCriteria, GradeLevel: req.GradeLevel, Category: req.Category, Credits: req.Credits, Type: subjectType, IsActive: isActive})
+	academicYearID, err := parseOptionalUUID(req.AcademicYearID)
 	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	subjectGroupID, err := parseOptionalUUID(req.SubjectGroupID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	subjectSubgroupID, err := parseOptionalUUID(req.SubjectSubgroupID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	item, err := c.svc.Create(ctx.Request.Context(), &CreateSubjectInput{SchoolID: schoolID, SubjectCode: req.SubjectCode, Name: req.Name, NameEN: req.NameEN, Description: req.Description, LearningObjectives: req.LearningObjectives, LearningOutcomes: req.LearningOutcomes, AssessmentCriteria: req.AssessmentCriteria, GradeLevel: req.GradeLevel, Category: req.Category, SubjectGroupID: subjectGroupID, SubjectSubgroupID: subjectSubgroupID, Credits: req.Credits, HoursPerWeek: req.HoursPerWeek, Semester: req.Semester, AcademicYearID: academicYearID, TeacherName: req.TeacherName, Type: subjectType, IsActive: isActive})
+	if err != nil {
+		if errors.Is(err, ErrSubjectGroupNotFound) {
+			base.ValidateFailed(ctx, ci18n.SubjectGroupNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrSubjectSubgroupNotFound) {
+			base.ValidateFailed(ctx, ci18n.SubjectSubgroupNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrSubjectSubgroupGroupMismatch) {
+			base.ValidateFailed(ctx, ci18n.SubjectSubgroupGroupMismatch, nil)
+			return
+		}
+		if errors.Is(err, ErrSubjectSubgroupRequiresGroup) {
+			base.ValidateFailed(ctx, ci18n.SubjectSubgroupRequiresGroup, nil)
+			return
+		}
 		if isSubjectCodeDuplicateError(err) {
 			base.ValidateFailed(ctx, ci18n.SubjectCodeDuplicate, nil)
 			return
@@ -180,10 +232,44 @@ func (c *Controller) Update(ctx *gin.Context) {
 		isActive = *req.IsActive
 	}
 
-	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateSubjectInput{SchoolID: schoolID, SubjectCode: req.SubjectCode, Name: req.Name, NameEN: req.NameEN, Description: req.Description, LearningObjectives: req.LearningObjectives, LearningOutcomes: req.LearningOutcomes, AssessmentCriteria: req.AssessmentCriteria, GradeLevel: req.GradeLevel, Category: req.Category, Credits: req.Credits, Type: ent.ToSubjectType(req.Type), IsActive: isActive})
+	academicYearID, err := parseOptionalUUID(req.AcademicYearID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	subjectGroupID, err := parseOptionalUUID(req.SubjectGroupID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	subjectSubgroupID, err := parseOptionalUUID(req.SubjectSubgroupID)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.InvalidID, nil)
+		return
+	}
+
+	item, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateSubjectInput{SchoolID: schoolID, SubjectCode: req.SubjectCode, Name: req.Name, NameEN: req.NameEN, Description: req.Description, LearningObjectives: req.LearningObjectives, LearningOutcomes: req.LearningOutcomes, AssessmentCriteria: req.AssessmentCriteria, GradeLevel: req.GradeLevel, Category: req.Category, SubjectGroupID: subjectGroupID, SubjectSubgroupID: subjectSubgroupID, Credits: req.Credits, HoursPerWeek: req.HoursPerWeek, Semester: req.Semester, AcademicYearID: academicYearID, TeacherName: req.TeacherName, Type: ent.ToSubjectType(req.Type), IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.SubjectNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrSubjectGroupNotFound) {
+			base.ValidateFailed(ctx, ci18n.SubjectGroupNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrSubjectSubgroupNotFound) {
+			base.ValidateFailed(ctx, ci18n.SubjectSubgroupNotFound, nil)
+			return
+		}
+		if errors.Is(err, ErrSubjectSubgroupGroupMismatch) {
+			base.ValidateFailed(ctx, ci18n.SubjectSubgroupGroupMismatch, nil)
+			return
+		}
+		if errors.Is(err, ErrSubjectSubgroupRequiresGroup) {
+			base.ValidateFailed(ctx, ci18n.SubjectSubgroupRequiresGroup, nil)
 			return
 		}
 		if isSubjectCodeDuplicateError(err) {
@@ -237,10 +323,43 @@ func toSubjectResponse(item *ent.Subject) subjectResponse {
 		AssessmentCriteria: item.AssessmentCriteria,
 		GradeLevel:         item.GradeLevel,
 		Category:           item.Category,
+		SubjectGroupID:     uuidPtrToStringPtr(item.SubjectGroupID),
+		SubjectSubgroupID:  uuidPtrToStringPtr(item.SubjectSubgroupID),
 		Credits:            item.Credits,
+		HoursPerWeek:       item.HoursPerWeek,
+		Semester:           item.Semester,
+		AcademicYearID:     uuidPtrToStringPtr(item.AcademicYearID),
+		TeacherName:        item.TeacherName,
 		Type:               string(item.Type),
 		IsActive:           item.IsActive,
 	}
+}
+
+func parseOptionalUUID(value *string) (*uuid.UUID, error) {
+	if value == nil {
+		return nil, nil
+	}
+
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil, nil
+	}
+
+	id, err := uuid.Parse(trimmed)
+	if err != nil {
+		return nil, err
+	}
+
+	return &id, nil
+}
+
+func uuidPtrToStringPtr(value *uuid.UUID) *string {
+	if value == nil {
+		return nil
+	}
+
+	text := value.String()
+	return &text
 }
 
 func isSubjectCodeDuplicateError(err error) bool {

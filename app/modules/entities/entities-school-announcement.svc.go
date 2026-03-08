@@ -36,6 +36,12 @@ func (s *Service) UpdateSchoolAnnouncementByID(ctx context.Context, id uuid.UUID
 		Set("author_member_id = ?", announcement.AuthorMemberID).
 		Set("title = ?", announcement.Title).
 		Set("content = ?", announcement.Content).
+		Set("category = ?", announcement.Category).
+		Set("status = ?", announcement.Status).
+		Set("announced_at = ?", announcement.AnnouncedAt).
+		Set("published_at = ?", announcement.PublishedAt).
+		Set("expires_at = ?", announcement.ExpiresAt).
+		Set("created_by_name = ?", announcement.CreatedByName).
 		Set("target_role = ?", announcement.TargetRole).
 		Set("is_pinned = ?", announcement.IsPinned).
 		Set("updated_at = current_timestamp").

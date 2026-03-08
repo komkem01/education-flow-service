@@ -15,6 +15,12 @@ type SchoolAnnouncement struct {
 	AuthorMemberID uuid.UUID   `bun:"author_member_id,type:uuid,notnull"`
 	Title          *string     `bun:"title"`
 	Content        *string     `bun:"content"`
+	Category       *string     `bun:"category"`
+	Status         string      `bun:"status,notnull"`
+	AnnouncedAt    *time.Time  `bun:"announced_at,type:date"`
+	PublishedAt    *time.Time  `bun:"published_at,type:date"`
+	ExpiresAt      *time.Time  `bun:"expires_at,type:date"`
+	CreatedByName  *string     `bun:"created_by_name"`
 	TargetRole     *MemberRole `bun:"target_role"`
 	IsPinned       bool        `bun:"is_pinned,notnull"`
 	CreatedAt      time.Time   `bun:"created_at,nullzero,notnull,default:current_timestamp"`

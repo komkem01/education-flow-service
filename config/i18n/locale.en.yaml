@@ -11,6 +11,11 @@ prefix-not-found: Prefix not found
 academic-year-not-found: Academic year not found
 classroom-not-found: Classroom not found
 subject-not-found: Subject not found
+department-not-found: Department not found
+subject-group-not-found: Subject group not found
+subject-subgroup-not-found: Subject subgroup not found
+subject-subgroup-group-mismatch: Subject subgroup does not belong to the selected subject group
+subject-subgroup-requires-group: Subject group is required when subject subgroup is provided
 subject-assignment-not-found: Subject assignment not found
 schedule-not-found: Schedule not found
 question-bank-not-found: Question bank item not found
@@ -28,6 +33,7 @@ gender-name-duplicate: Gender name already exists
 prefix-name-duplicate: Prefix name already exists
 academic-year-duplicate: Academic year already exists
 subject-code-duplicate: Subject code already exists in this school
+department-code-duplicate: Department code already exists in this school
 subject-assignment-duplicate: Subject assignment already exists for this classroom, teacher, subject, academic year and semester
 subject-assignment-invalid-date-range: End date must be after or equal start date for subject assignment
 schedule-duplicate: Schedule entry already exists in this assignment for the same slot

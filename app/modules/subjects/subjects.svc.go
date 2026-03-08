@@ -2,6 +2,8 @@ package subjects
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"strings"
 
 	"education-flow/app/modules/entities/ent"
@@ -13,17 +15,28 @@ import (
 )
 
 type Service struct {
-	tracer trace.Tracer
-	db     entitiesinf.SubjectEntity
+	tracer            trace.Tracer
+	db                entitiesinf.SubjectEntity
+	subjectGroupDB    entitiesinf.SubjectGroupEntity
+	subjectSubgroupDB entitiesinf.SubjectSubgroupEntity
 }
 
 type Config struct{}
 
 type Options struct {
 	*config.Config[Config]
-	tracer trace.Tracer
-	db     entitiesinf.SubjectEntity
+	tracer            trace.Tracer
+	db                entitiesinf.SubjectEntity
+	subjectGroupDB    entitiesinf.SubjectGroupEntity
+	subjectSubgroupDB entitiesinf.SubjectSubgroupEntity
 }
+
+var (
+	ErrSubjectGroupNotFound         = errors.New("subject-group-not-found")
+	ErrSubjectSubgroupNotFound      = errors.New("subject-subgroup-not-found")
+	ErrSubjectSubgroupGroupMismatch = errors.New("subject-subgroup-group-mismatch")
+	ErrSubjectSubgroupRequiresGroup = errors.New("subject-subgroup-requires-group")
+)
 
 type CreateSubjectInput struct {
 	SchoolID           uuid.UUID
@@ -36,7 +49,13 @@ type CreateSubjectInput struct {
 	AssessmentCriteria *string
 	GradeLevel         *string
 	Category           *string
+	SubjectGroupID     *uuid.UUID
+	SubjectSubgroupID  *uuid.UUID
 	Credits            *float64
+	HoursPerWeek       *int
+	Semester           *int
+	AcademicYearID     *uuid.UUID
+	TeacherName        *string
 	Type               ent.SubjectType
 	IsActive           bool
 }
@@ -48,10 +67,14 @@ type ListSubjectsInput struct {
 }
 
 func newService(opt *Options) *Service {
-	return &Service{tracer: opt.tracer, db: opt.db}
+	return &Service{tracer: opt.tracer, db: opt.db, subjectGroupDB: opt.subjectGroupDB, subjectSubgroupDB: opt.subjectSubgroupDB}
 }
 
 func (s *Service) Create(ctx context.Context, input *CreateSubjectInput) (*ent.Subject, error) {
+	if err := s.validateGroupConsistency(ctx, input.SubjectGroupID, input.SubjectSubgroupID); err != nil {
+		return nil, err
+	}
+
 	item := &ent.Subject{
 		SchoolID:           input.SchoolID,
 		SubjectCode:        trimStringPtr(input.SubjectCode),
@@ -63,7 +86,13 @@ func (s *Service) Create(ctx context.Context, input *CreateSubjectInput) (*ent.S
 		AssessmentCriteria: trimStringPtr(input.AssessmentCriteria),
 		GradeLevel:         trimStringPtr(input.GradeLevel),
 		Category:           trimStringPtr(input.Category),
+		SubjectGroupID:     input.SubjectGroupID,
+		SubjectSubgroupID:  input.SubjectSubgroupID,
 		Credits:            input.Credits,
+		HoursPerWeek:       input.HoursPerWeek,
+		Semester:           input.Semester,
+		AcademicYearID:     input.AcademicYearID,
+		TeacherName:        trimStringPtr(input.TeacherName),
 		Type:               input.Type,
 		IsActive:           input.IsActive,
 	}
@@ -79,6 +108,10 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.Subject, erro
 }
 
 func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateSubjectInput) (*ent.Subject, error) {
+	if err := s.validateGroupConsistency(ctx, input.SubjectGroupID, input.SubjectSubgroupID); err != nil {
+		return nil, err
+	}
+
 	item := &ent.Subject{
 		SchoolID:           input.SchoolID,
 		SubjectCode:        trimStringPtr(input.SubjectCode),
@@ -90,7 +123,13 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateSub
 		AssessmentCriteria: trimStringPtr(input.AssessmentCriteria),
 		GradeLevel:         trimStringPtr(input.GradeLevel),
 		Category:           trimStringPtr(input.Category),
+		SubjectGroupID:     input.SubjectGroupID,
+		SubjectSubgroupID:  input.SubjectSubgroupID,
 		Credits:            input.Credits,
+		HoursPerWeek:       input.HoursPerWeek,
+		Semester:           input.Semester,
+		AcademicYearID:     input.AcademicYearID,
+		TeacherName:        trimStringPtr(input.TeacherName),
 		Type:               input.Type,
 		IsActive:           input.IsActive,
 	}
@@ -110,4 +149,35 @@ func trimStringPtr(input *string) *string {
 		return nil
 	}
 	return &value
+}
+
+func (s *Service) validateGroupConsistency(ctx context.Context, subjectGroupID *uuid.UUID, subjectSubgroupID *uuid.UUID) error {
+	if subjectSubgroupID != nil && subjectGroupID == nil {
+		return ErrSubjectSubgroupRequiresGroup
+	}
+
+	if subjectGroupID != nil {
+		if _, err := s.subjectGroupDB.GetSubjectGroupByID(ctx, *subjectGroupID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrSubjectGroupNotFound
+			}
+			return err
+		}
+	}
+
+	if subjectSubgroupID != nil {
+		subgroup, err := s.subjectSubgroupDB.GetSubjectSubgroupByID(ctx, *subjectSubgroupID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrSubjectSubgroupNotFound
+			}
+			return err
+		}
+
+		if subjectGroupID == nil || subgroup.SubjectGroupID != *subjectGroupID {
+			return ErrSubjectSubgroupGroupMismatch
+		}
+	}
+
+	return nil
 }

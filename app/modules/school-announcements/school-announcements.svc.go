@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"education-flow/app/modules/entities/ent"
 	entitiesinf "education-flow/app/modules/entities/inf"
@@ -46,6 +47,12 @@ type CreateInput struct {
 	AuthorMemberID uuid.UUID
 	Title          *string
 	Content        *string
+	Category       *string
+	Status         string
+	AnnouncedAt    *time.Time
+	PublishedAt    *time.Time
+	ExpiresAt      *time.Time
+	CreatedByName  *string
 	TargetRole     *ent.MemberRole
 	IsPinned       bool
 }
@@ -66,6 +73,15 @@ func (s *Service) Create(ctx context.Context, input *CreateInput) (*ent.SchoolAn
 	}
 
 	item := &ent.SchoolAnnouncement{SchoolID: input.SchoolID, AuthorMemberID: input.AuthorMemberID, Title: trimStringPtr(input.Title), Content: trimStringPtr(input.Content), TargetRole: input.TargetRole, IsPinned: input.IsPinned}
+	item.Category = trimStringPtr(input.Category)
+	item.Status = strings.TrimSpace(input.Status)
+	item.AnnouncedAt = input.AnnouncedAt
+	item.PublishedAt = input.PublishedAt
+	item.ExpiresAt = input.ExpiresAt
+	item.CreatedByName = trimStringPtr(input.CreatedByName)
+	if item.Status == "" {
+		item.Status = "published"
+	}
 	return s.db.CreateSchoolAnnouncement(ctx, item)
 }
 
@@ -83,6 +99,15 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateInp
 	}
 
 	item := &ent.SchoolAnnouncement{SchoolID: input.SchoolID, AuthorMemberID: input.AuthorMemberID, Title: trimStringPtr(input.Title), Content: trimStringPtr(input.Content), TargetRole: input.TargetRole, IsPinned: input.IsPinned}
+	item.Category = trimStringPtr(input.Category)
+	item.Status = strings.TrimSpace(input.Status)
+	item.AnnouncedAt = input.AnnouncedAt
+	item.PublishedAt = input.PublishedAt
+	item.ExpiresAt = input.ExpiresAt
+	item.CreatedByName = trimStringPtr(input.CreatedByName)
+	if item.Status == "" {
+		item.Status = "published"
+	}
 	return s.db.UpdateSchoolAnnouncementByID(ctx, id, item)
 }
 

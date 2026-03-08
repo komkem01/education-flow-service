@@ -17,6 +17,8 @@ func apiMasterData(r *gin.RouterGroup, mod *modules.Modules) {
 	registerCRUD(protected, "/prefixes", mod.Prefix.Ctl.List, mod.Prefix.Ctl.Get, mod.Prefix.Ctl.Create, mod.Prefix.Ctl.Update, mod.Prefix.Ctl.Delete)
 	registerCRUD(protected, "/classrooms", mod.Classroom.Ctl.List, mod.Classroom.Ctl.Get, mod.Classroom.Ctl.Create, mod.Classroom.Ctl.Update, mod.Classroom.Ctl.Delete)
 	registerCRUD(protected, "/subjects", mod.Subject.Ctl.List, mod.Subject.Ctl.Get, mod.Subject.Ctl.Create, mod.Subject.Ctl.Update, mod.Subject.Ctl.Delete)
+	registerCRUD(protected, "/subject-groups", mod.SubjectGroup.Ctl.List, mod.SubjectGroup.Ctl.Get, mod.SubjectGroup.Ctl.Create, mod.SubjectGroup.Ctl.Update, mod.SubjectGroup.Ctl.Delete)
+	registerCRUD(protected, "/subject-subgroups", mod.SubjectSubgroup.Ctl.List, mod.SubjectSubgroup.Ctl.Get, mod.SubjectSubgroup.Ctl.Create, mod.SubjectSubgroup.Ctl.Update, mod.SubjectSubgroup.Ctl.Delete)
 	registerCRUD(protected, "/subject-assignments", mod.SubjectAssignment.Ctl.List, mod.SubjectAssignment.Ctl.Get, mod.SubjectAssignment.Ctl.Create, mod.SubjectAssignment.Ctl.Update, mod.SubjectAssignment.Ctl.Delete)
 	registerCRUD(protected, "/schedules", mod.Schedule.Ctl.List, mod.Schedule.Ctl.Get, mod.Schedule.Ctl.Create, mod.Schedule.Ctl.Update, mod.Schedule.Ctl.Delete)
 	registerCRUD(protected, "/question-banks", mod.QuestionBank.Ctl.List, mod.QuestionBank.Ctl.Get, mod.QuestionBank.Ctl.Create, mod.QuestionBank.Ctl.Update, mod.QuestionBank.Ctl.Delete)

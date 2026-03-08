@@ -14,9 +14,9 @@ type Module struct {
 	Ctl    *Controller
 }
 
-func New(conf *config.Config[Config], db entitiesinf.SubjectEntity) *Module {
+func New(conf *config.Config[Config], db entitiesinf.SubjectEntity, subjectGroupDB entitiesinf.SubjectGroupEntity, subjectSubgroupDB entitiesinf.SubjectSubgroupEntity) *Module {
 	tracer := otel.Tracer("education-flow.modules.subjects")
-	svc := newService(&Options{Config: conf, tracer: tracer, db: db})
+	svc := newService(&Options{Config: conf, tracer: tracer, db: db, subjectGroupDB: subjectGroupDB, subjectSubgroupDB: subjectSubgroupDB})
 
 	return &Module{tracer: tracer, Svc: svc, Ctl: newController(tracer, svc)}
 }
