@@ -11,6 +11,7 @@ type AcademicYear struct {
 	bun.BaseModel `bun:"table:academic_years,alias:acy"`
 
 	ID        uuid.UUID `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	SchoolID  uuid.UUID `bun:"school_id,type:uuid,notnull"`
 	Year      string    `bun:"year,notnull"`
 	Term      string    `bun:"term,notnull"`
 	IsCurrent bool      `bun:"is_current,notnull"`

@@ -32,6 +32,7 @@ storage-link-not-found: Storage link not found
 gender-name-duplicate: Gender name already exists
 prefix-name-duplicate: Prefix name already exists
 academic-year-duplicate: Academic year already exists
+academic-year-year-out-of-range: Academic year must be Buddhist Era in range 2500-2700
 subject-code-duplicate: Subject code already exists in this school
 department-code-duplicate: Department code already exists in this school
 subject-assignment-duplicate: Subject assignment already exists for this classroom, teacher, subject, academic year and semester

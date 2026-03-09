@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
 	"education-flow/app/utils"
 	"education-flow/app/utils/base"
@@ -65,6 +66,12 @@ type academicYearResponse struct {
 
 func (c *Controller) Create(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	var req createAcademicYearRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		base.BadRequest(ctx, "bad-request", nil)
@@ -77,6 +84,7 @@ func (c *Controller) Create(ctx *gin.Context) {
 	}
 
 	academicYear, err := c.svc.Create(ctx.Request.Context(), &CreateAcademicYearInput{
+		SchoolID:  claims.SchoolID,
 		Year:      req.Year,
 		Term:      req.Term,
 		IsCurrent: req.IsCurrent,
@@ -85,6 +93,11 @@ func (c *Controller) Create(ctx *gin.Context) {
 		EndDate:   endDate,
 	})
 	if err != nil {
+		if errors.Is(err, errAcademicYearYearOutOfRange) {
+			base.ValidateFailed(ctx, ci18n.AcademicYearYearOutOfRange, nil)
+			return
+		}
+
 		if isDuplicateKeyError(err) {
 			base.ValidateFailed(ctx, ci18n.AcademicYearDuplicate, nil)
 			return
@@ -100,6 +113,24 @@ func (c *Controller) Create(ctx *gin.Context) {
 
 func (c *Controller) List(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
+	if schoolIDQuery := ctx.Query("school_id"); schoolIDQuery != "" {
+		schoolID, err := uuid.Parse(schoolIDQuery)
+		if err != nil {
+			base.BadRequest(ctx, ci18n.InvalidID, nil)
+			return
+		}
+		if schoolID != claims.SchoolID {
+			base.Forbidden(ctx, ci18n.Forbidden, nil)
+			return
+		}
+	}
+
 	onlyActive, err := strconv.ParseBool(ctx.DefaultQuery("only_active", "false"))
 	if err != nil {
 		base.BadRequest(ctx, "bad-request", nil)
@@ -111,7 +142,7 @@ func (c *Controller) List(ctx *gin.Context) {
 		return
 	}
 
-	academicYears, err := c.svc.List(ctx.Request.Context(), onlyActive, onlyCurrent)
+	academicYears, err := c.svc.List(ctx.Request.Context(), claims.SchoolID, onlyActive, onlyCurrent)
 	if err != nil {
 		log.Errf("academic-years.list.error: %v", err)
 		base.InternalServerError(ctx, "internal-server-error", nil)
@@ -128,12 +159,18 @@ func (c *Controller) List(ctx *gin.Context) {
 
 func (c *Controller) Get(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseAcademicYearID(ctx)
 	if !ok {
 		return
 	}
 
-	academicYear, err := c.svc.GetByID(ctx.Request.Context(), id)
+	academicYear, err := c.svc.GetByIDInSchool(ctx.Request.Context(), claims.SchoolID, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.AcademicYearNotFound, nil)
@@ -150,6 +187,12 @@ func (c *Controller) Get(ctx *gin.Context) {
 
 func (c *Controller) Update(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseAcademicYearID(ctx)
 	if !ok {
 		return
@@ -166,7 +209,8 @@ func (c *Controller) Update(ctx *gin.Context) {
 		return
 	}
 
-	academicYear, err := c.svc.UpdateByID(ctx.Request.Context(), id, &UpdateAcademicYearInput{
+	academicYear, err := c.svc.UpdateByIDInSchool(ctx.Request.Context(), id, &UpdateAcademicYearInput{
+		SchoolID:  claims.SchoolID,
 		Year:      req.Year,
 		Term:      req.Term,
 		IsCurrent: req.IsCurrent,
@@ -175,6 +219,11 @@ func (c *Controller) Update(ctx *gin.Context) {
 		EndDate:   endDate,
 	})
 	if err != nil {
+		if errors.Is(err, errAcademicYearYearOutOfRange) {
+			base.ValidateFailed(ctx, ci18n.AcademicYearYearOutOfRange, nil)
+			return
+		}
+
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.AcademicYearNotFound, nil)
 			return
@@ -195,12 +244,22 @@ func (c *Controller) Update(ctx *gin.Context) {
 
 func (c *Controller) Delete(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	id, ok := parseAcademicYearID(ctx)
 	if !ok {
 		return
 	}
 
-	if err := c.svc.DeleteByID(ctx.Request.Context(), id); err != nil {
+	if err := c.svc.DeleteByIDInSchool(ctx.Request.Context(), claims.SchoolID, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			base.ValidateFailed(ctx, ci18n.AcademicYearNotFound, nil)
+			return
+		}
 		log.Errf("academic-years.delete.error: %v", err)
 		base.InternalServerError(ctx, "internal-server-error", nil)
 		return

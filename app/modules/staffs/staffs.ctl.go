@@ -253,6 +253,12 @@ func (c *Controller) Create(ctx *gin.Context) {
 
 func (c *Controller) List(ctx *gin.Context) {
 	_, log := utils.LogSpanFromGin(ctx)
+	claims, ok := auth.GetClaimsFromGin(ctx)
+	if !ok {
+		base.Unauthorized(ctx, ci18n.Unauthorized, nil)
+		return
+	}
+
 	memberID, err := utils.ParseQueryUUID(ctx.Query("member_id"))
 	if err != nil {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
@@ -264,7 +270,7 @@ func (c *Controller) List(ctx *gin.Context) {
 		return
 	}
 
-	staffs, err := c.svc.List(ctx.Request.Context(), &ListStaffsInput{MemberID: memberID, OnlyActive: onlyActive})
+	staffs, err := c.svc.List(ctx.Request.Context(), &ListStaffsInput{SchoolID: &claims.SchoolID, MemberID: memberID, OnlyActive: onlyActive})
 	if err != nil {
 		log.Errf("staffs.list.error: %v", err)
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)

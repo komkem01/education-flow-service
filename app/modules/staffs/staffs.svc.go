@@ -88,6 +88,7 @@ type RegisterStaffWorkExperienceInput struct {
 }
 
 type ListStaffsInput struct {
+	SchoolID   *uuid.UUID
 	MemberID   *uuid.UUID
 	OnlyActive bool
 }
@@ -144,7 +145,7 @@ func (s *Service) Create(ctx context.Context, input *CreateStaffInput) (*ent.Mem
 }
 
 func (s *Service) List(ctx context.Context, input *ListStaffsInput) ([]*ent.MemberStaff, error) {
-	return s.db.ListStaffs(ctx, input.MemberID, input.OnlyActive)
+	return s.db.ListStaffs(ctx, input.SchoolID, input.MemberID, input.OnlyActive)
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*ent.MemberStaff, error) {

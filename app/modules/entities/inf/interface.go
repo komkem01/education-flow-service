@@ -104,10 +104,11 @@ type PrefixEntity interface {
 
 type AcademicYearEntity interface {
 	CreateAcademicYear(ctx context.Context, academicYear *ent.AcademicYear) (*ent.AcademicYear, error)
-	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (*ent.AcademicYear, error)
+	GetAcademicYearByID(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) (*ent.AcademicYear, error)
 	UpdateAcademicYearByID(ctx context.Context, id uuid.UUID, academicYear *ent.AcademicYear) (*ent.AcademicYear, error)
 	DeleteAcademicYearByID(ctx context.Context, id uuid.UUID) error
-	ListAcademicYears(ctx context.Context, onlyActive bool, onlyCurrent bool) ([]*ent.AcademicYear, error)
+	ListAcademicYears(ctx context.Context, schoolID uuid.UUID, onlyActive bool, onlyCurrent bool) ([]*ent.AcademicYear, error)
+	ClearCurrentAcademicYearsBySchoolID(ctx context.Context, schoolID uuid.UUID, exceptID *uuid.UUID) error
 }
 
 type ClassroomEntity interface {
@@ -253,7 +254,7 @@ type MemberStaffEntity interface {
 	GetStaffByID(ctx context.Context, id uuid.UUID) (*ent.MemberStaff, error)
 	UpdateStaffByID(ctx context.Context, id uuid.UUID, staff *ent.MemberStaff) (*ent.MemberStaff, error)
 	DeleteStaffByID(ctx context.Context, id uuid.UUID) error
-	ListStaffs(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberStaff, error)
+	ListStaffs(ctx context.Context, schoolID *uuid.UUID, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberStaff, error)
 	MemberHasStaffRole(ctx context.Context, memberID uuid.UUID) (bool, error)
 }
 

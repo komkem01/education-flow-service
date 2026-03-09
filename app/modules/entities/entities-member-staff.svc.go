@@ -55,15 +55,22 @@ func (s *Service) DeleteStaffByID(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-func (s *Service) ListStaffs(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberStaff, error) {
+func (s *Service) ListStaffs(ctx context.Context, schoolID *uuid.UUID, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberStaff, error) {
 	var staffs []*ent.MemberStaff
-	query := s.db.NewSelect().Model(&staffs).Order("created_at DESC")
+	query := s.db.NewSelect().
+		Model(&staffs).
+		Join("JOIN members m ON m.id = msf.member_id").
+		Order("msf.created_at DESC")
+
+	if schoolID != nil {
+		query = query.Where("m.school_id = ?", *schoolID)
+	}
 
 	if memberID != nil {
-		query = query.Where("member_id = ?", *memberID)
+		query = query.Where("msf.member_id = ?", *memberID)
 	}
 	if onlyActive {
-		query = query.Where("is_active = true")
+		query = query.Where("msf.is_active = true")
 	}
 
 	if err := query.Scan(ctx); err != nil {

@@ -104,7 +104,7 @@ func (m *mockSchoolAnnouncementDB) UpdateStaffByID(ctx context.Context, id uuid.
 func (m *mockSchoolAnnouncementDB) DeleteStaffByID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
-func (m *mockSchoolAnnouncementDB) ListStaffs(ctx context.Context, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberStaff, error) {
+func (m *mockSchoolAnnouncementDB) ListStaffs(ctx context.Context, schoolID *uuid.UUID, memberID *uuid.UUID, onlyActive bool) ([]*ent.MemberStaff, error) {
 	return nil, nil
 }
 func (m *mockSchoolAnnouncementDB) MemberHasStaffRole(ctx context.Context, memberID uuid.UUID) (bool, error) {

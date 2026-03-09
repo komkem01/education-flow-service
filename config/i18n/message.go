@@ -37,6 +37,7 @@ var (
 	GenderNameDuplicate                 = "gender-name-duplicate"
 	PrefixNameDuplicate                 = "prefix-name-duplicate"
 	AcademicYearDuplicate               = "academic-year-duplicate"
+	AcademicYearYearOutOfRange          = "academic-year-year-out-of-range"
 	SubjectCodeDuplicate                = "subject-code-duplicate"
 	DepartmentCodeDuplicate             = "department-code-duplicate"
 	SubjectAssignmentDuplicate          = "subject-assignment-duplicate"

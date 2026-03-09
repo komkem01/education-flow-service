@@ -18,9 +18,9 @@ func (s *Service) CreateAcademicYear(ctx context.Context, academicYear *ent.Acad
 	return academicYear, nil
 }
 
-func (s *Service) GetAcademicYearByID(ctx context.Context, id uuid.UUID) (*ent.AcademicYear, error) {
+func (s *Service) GetAcademicYearByID(ctx context.Context, schoolID uuid.UUID, id uuid.UUID) (*ent.AcademicYear, error) {
 	academicYear := new(ent.AcademicYear)
-	if err := s.db.NewSelect().Model(academicYear).Where("id = ?", id).Scan(ctx); err != nil {
+	if err := s.db.NewSelect().Model(academicYear).Where("id = ?", id).Where("school_id = ?", schoolID).Scan(ctx); err != nil {
 		return nil, err
 	}
 	return academicYear, nil
@@ -30,6 +30,7 @@ func (s *Service) UpdateAcademicYearByID(ctx context.Context, id uuid.UUID, acad
 	updated := new(ent.AcademicYear)
 	if err := s.db.NewUpdate().
 		Model(updated).
+		Set("school_id = ?", academicYear.SchoolID).
 		Set("year = ?", academicYear.Year).
 		Set("term = ?", academicYear.Term).
 		Set("is_current = ?", academicYear.IsCurrent).
@@ -50,9 +51,9 @@ func (s *Service) DeleteAcademicYearByID(ctx context.Context, id uuid.UUID) erro
 	return err
 }
 
-func (s *Service) ListAcademicYears(ctx context.Context, onlyActive bool, onlyCurrent bool) ([]*ent.AcademicYear, error) {
+func (s *Service) ListAcademicYears(ctx context.Context, schoolID uuid.UUID, onlyActive bool, onlyCurrent bool) ([]*ent.AcademicYear, error) {
 	var academicYears []*ent.AcademicYear
-	query := s.db.NewSelect().Model(&academicYears).Order("year DESC").Order("term ASC")
+	query := s.db.NewSelect().Model(&academicYears).Where("school_id = ?", schoolID).Order("year DESC").Order("term ASC")
 	if onlyActive {
 		query = query.Where("is_active = true")
 	}
@@ -63,4 +64,20 @@ func (s *Service) ListAcademicYears(ctx context.Context, onlyActive bool, onlyCu
 		return nil, err
 	}
 	return academicYears, nil
+}
+
+func (s *Service) ClearCurrentAcademicYearsBySchoolID(ctx context.Context, schoolID uuid.UUID, exceptID *uuid.UUID) error {
+	query := s.db.NewUpdate().
+		Model((*ent.AcademicYear)(nil)).
+		Set("is_current = false").
+		Set("updated_at = current_timestamp").
+		Where("school_id = ?", schoolID).
+		Where("is_current = true")
+
+	if exceptID != nil {
+		query = query.Where("id <> ?", *exceptID)
+	}
+
+	_, err := query.Exec(ctx)
+	return err
 }
