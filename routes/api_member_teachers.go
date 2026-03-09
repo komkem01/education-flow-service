@@ -16,6 +16,14 @@ func apiMemberTeachers(r *gin.RouterGroup, mod *modules.Modules) {
 	protected.GET("/teachers", mod.Teacher.Ctl.List)
 	protected.POST("/teachers", mod.Teacher.Ctl.Create)
 
+	// Read-only metadata endpoints used by teacher-facing UI.
+	protected.GET("/teachers-meta/schools/:id", mod.School.Ctl.Get)
+	protected.GET("/teachers-meta/academic-years/:id", mod.AcademicYear.Ctl.Get)
+	protected.GET("/teachers-meta/classrooms/:id", mod.Classroom.Ctl.Get)
+	protected.GET("/teachers-meta/subjects/:id", mod.Subject.Ctl.Get)
+	protected.GET("/teachers-meta/schedules", mod.Schedule.Ctl.List)
+	protected.GET("/teachers-meta/school-announcements", mod.SchoolAnnouncement.Ctl.List)
+
 	teacherOwned := protected.Group("/teachers/:id")
 	teacherOwned.Use(requireTeacherResourceOwnerOrRoles(mod, ent.MemberRoleAdmin, ent.MemberRoleStaff))
 	teacherOwned.GET("", mod.Teacher.Ctl.Get)
