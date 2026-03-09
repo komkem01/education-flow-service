@@ -16,6 +16,17 @@ func apiMemberStudents(r *gin.RouterGroup, mod *modules.Modules) {
 	protected.GET("/students", mod.Student.Ctl.List)
 	protected.POST("/students", mod.Student.Ctl.Create)
 
+	// Read-only metadata endpoints used by student-facing UI.
+	protected.GET("/students-meta/schools/:id", mod.School.Ctl.Get)
+	protected.GET("/students-meta/academic-years/:id", mod.AcademicYear.Ctl.Get)
+	protected.GET("/students-meta/classrooms/:id", mod.Classroom.Ctl.Get)
+	protected.GET("/students-meta/subjects/:id", mod.Subject.Ctl.Get)
+	protected.GET("/students-meta/teachers/:id", mod.Teacher.Ctl.Get)
+	protected.GET("/students-meta/prefixes/:id", mod.Prefix.Ctl.Get)
+	protected.GET("/students-meta/subject-assignments", mod.SubjectAssignment.Ctl.List)
+	protected.GET("/students-meta/subject-assignments/:id", mod.SubjectAssignment.Ctl.Get)
+	protected.GET("/students-meta/schedules", mod.Schedule.Ctl.List)
+
 	studentOwned := protected.Group("/students/:id")
 	studentOwned.Use(requireStudentResourceAccess(mod, ent.MemberRoleAdmin, ent.MemberRoleStaff, ent.MemberRoleTeacher))
 	studentOwned.GET("", mod.Student.Ctl.Get)
@@ -23,6 +34,7 @@ func apiMemberStudents(r *gin.RouterGroup, mod *modules.Modules) {
 	studentOwned.DELETE("", mod.Student.Ctl.Delete)
 
 	studentOwned.GET("/enrollments", mod.StudentEnrollments.Ctl.List)
+	studentOwned.GET("/parents", mod.ParentStudents.Ctl.ListByStudent)
 	studentOwned.POST("/enrollments", mod.StudentEnrollments.Ctl.Create)
 	studentOwned.PATCH("/enrollments/:child_id", mod.StudentEnrollments.Ctl.Update)
 	studentOwned.DELETE("/enrollments/:child_id", mod.StudentEnrollments.Ctl.Delete)
