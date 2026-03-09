@@ -31,6 +31,14 @@ type serviceDB interface {
 	entitiesinf.MemberRoleEntity
 	entitiesinf.TeacherEducationEntity
 	entitiesinf.TeacherWorkExperienceEntity
+	entitiesinf.MemberAddressEntity
+}
+
+type MemberAddressInput struct {
+	Label       *string
+	AddressLine string
+	IsPrimary   bool
+	SortOrder   int
 }
 
 type Config struct{}
@@ -55,6 +63,7 @@ type CreateTeacherInput struct {
 	CurrentAcademicStanding *string
 	Department              *string
 	StartDate               *time.Time
+	Addresses               []MemberAddressInput
 	IsActive                bool
 }
 
@@ -75,6 +84,7 @@ type RegisterTeacherInput struct {
 	CurrentAcademicStanding *string
 	Department              *string
 	StartDate               *time.Time
+	Addresses               []MemberAddressInput
 	IsActive                bool
 	Educations              []RegisterTeacherEducationInput
 	WorkExperiences         []RegisterTeacherWorkExperienceInput
@@ -158,6 +168,10 @@ func (s *Service) Create(ctx context.Context, input *CreateTeacherInput) (*ent.M
 
 		created, err := s.db.CreateTeacher(ctx, teacher)
 		if err == nil {
+			if err := s.replaceMemberAddresses(ctx, created.MemberID, input.Addresses); err != nil {
+				_ = s.db.DeleteTeacherByID(ctx, created.ID)
+				return nil, err
+			}
 			if roleErr := s.db.AddMemberRole(ctx, input.MemberID, ent.MemberRoleTeacher); roleErr != nil {
 				_ = s.db.DeleteTeacherByID(ctx, created.ID)
 				return nil, roleErr
@@ -257,7 +271,16 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateTea
 		StartDate:               input.StartDate,
 		IsActive:                input.IsActive,
 	}
-	return s.db.UpdateTeacherByID(ctx, id, teacher)
+	updated, err := s.db.UpdateTeacherByID(ctx, id, teacher)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.replaceMemberAddresses(ctx, updated.MemberID, input.Addresses); err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }
 
 func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
@@ -351,6 +374,11 @@ func (s *Service) Register(ctx context.Context, input *RegisterTeacherInput) (*e
 		return nil, nil, fmt.Errorf("failed to create teacher after %d code retries", maxTeacherCodeGenerateRetry)
 	}
 
+	if err := s.replaceMemberAddresses(ctx, member.ID, input.Addresses); err != nil {
+		runCleanup()
+		return nil, nil, err
+	}
+
 	for _, educationInput := range input.Educations {
 		education, err := s.db.CreateTeacherEducation(ctx, &ent.TeacherEducation{
 			TeacherID:      teacher.ID,
@@ -385,6 +413,51 @@ func (s *Service) Register(ctx context.Context, input *RegisterTeacherInput) (*e
 	}
 
 	return member, teacher, nil
+}
+
+func (s *Service) ListAddressesByMemberID(ctx context.Context, memberID uuid.UUID) ([]*ent.MemberAddress, error) {
+	return s.db.ListMemberAddressesByMemberID(ctx, memberID)
+}
+
+func (s *Service) replaceMemberAddresses(ctx context.Context, memberID uuid.UUID, items []MemberAddressInput) error {
+	addresses := make([]*ent.MemberAddress, 0, len(items))
+	for i, item := range items {
+		line := strings.TrimSpace(item.AddressLine)
+		if line == "" {
+			continue
+		}
+
+		sortOrder := item.SortOrder
+		if sortOrder < 0 {
+			sortOrder = i
+		}
+
+		addresses = append(addresses, &ent.MemberAddress{
+			Label:       trimStringPtr(item.Label),
+			AddressLine: line,
+			IsPrimary:   item.IsPrimary,
+			SortOrder:   sortOrder,
+		})
+	}
+
+	if len(addresses) > 0 {
+		primaryIndex := -1
+		for idx, item := range addresses {
+			if !item.IsPrimary {
+				continue
+			}
+			if primaryIndex == -1 {
+				primaryIndex = idx
+				continue
+			}
+			item.IsPrimary = false
+		}
+		if primaryIndex == -1 {
+			addresses[0].IsPrimary = true
+		}
+	}
+
+	return s.db.ReplaceMemberAddressesByMemberID(ctx, memberID, addresses)
 }
 
 func trimStringPtr(input *string) *string {

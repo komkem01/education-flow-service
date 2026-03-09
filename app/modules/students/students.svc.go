@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"education-flow/app/modules/entities/ent"
 	entitiesinf "education-flow/app/modules/entities/inf"
@@ -31,6 +32,14 @@ type serviceDB interface {
 	entitiesinf.MemberParentEntity
 	entitiesinf.MemberParentStudentEntity
 	entitiesinf.MemberEntity
+	entitiesinf.MemberAddressEntity
+}
+
+type MemberAddressInput struct {
+	Label       *string
+	AddressLine string
+	IsPrimary   bool
+	SortOrder   int
 }
 
 type Config struct{}
@@ -52,8 +61,14 @@ type CreateStudentInput struct {
 	DefaultStudentNo   *int
 	FirstName          *string
 	LastName           *string
+	NickName           *string
+	Dob                *time.Time
+	BloodType          *string
+	Religion           *string
+	Nationality        *string
 	CitizenID          *string
 	Phone              *string
+	Addresses          []MemberAddressInput
 	IsActive           bool
 }
 
@@ -71,8 +86,14 @@ type RegisterStudentInput struct {
 	DefaultStudentNo   *int
 	FirstName          *string
 	LastName           *string
+	NickName           *string
+	Dob                *time.Time
+	BloodType          *string
+	Religion           *string
+	Nationality        *string
 	CitizenID          *string
 	Phone              *string
+	Addresses          []MemberAddressInput
 	IsActive           bool
 	Parent             *RegisterParentInput
 }
@@ -135,6 +156,11 @@ func (s *Service) Create(ctx context.Context, input *CreateStudentInput) (*ent.M
 		DefaultStudentNo:   input.DefaultStudentNo,
 		FirstName:          trimStringPtr(input.FirstName),
 		LastName:           trimStringPtr(input.LastName),
+		NickName:           trimStringPtr(input.NickName),
+		Dob:                input.Dob,
+		BloodType:          trimStringPtr(input.BloodType),
+		Religion:           trimStringPtr(input.Religion),
+		Nationality:        trimStringPtr(input.Nationality),
 		CitizenID:          trimStringPtr(input.CitizenID),
 		Phone:              trimStringPtr(input.Phone),
 		IsActive:           input.IsActive,
@@ -150,6 +176,10 @@ func (s *Service) Create(ctx context.Context, input *CreateStudentInput) (*ent.M
 
 		created, err := s.db.CreateStudent(ctx, student)
 		if err == nil {
+			if err := s.replaceMemberAddresses(ctx, created.MemberID, input.Addresses); err != nil {
+				_ = s.db.DeleteStudentByID(ctx, created.ID)
+				return nil, err
+			}
 			return created, nil
 		}
 		if !(autoGenerateCode && isStudentCodeDuplicateError(err)) {
@@ -236,11 +266,25 @@ func (s *Service) UpdateByID(ctx context.Context, id uuid.UUID, input *UpdateStu
 		DefaultStudentNo:   input.DefaultStudentNo,
 		FirstName:          trimStringPtr(input.FirstName),
 		LastName:           trimStringPtr(input.LastName),
+		NickName:           trimStringPtr(input.NickName),
+		Dob:                input.Dob,
+		BloodType:          trimStringPtr(input.BloodType),
+		Religion:           trimStringPtr(input.Religion),
+		Nationality:        trimStringPtr(input.Nationality),
 		CitizenID:          trimStringPtr(input.CitizenID),
 		Phone:              trimStringPtr(input.Phone),
 		IsActive:           input.IsActive,
 	}
-	return s.db.UpdateStudentByID(ctx, id, student)
+	updated, err := s.db.UpdateStudentByID(ctx, id, student)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.replaceMemberAddresses(ctx, updated.MemberID, input.Addresses); err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }
 
 func (s *Service) DeleteByID(ctx context.Context, id uuid.UUID) error {
@@ -302,6 +346,11 @@ func (s *Service) Register(ctx context.Context, input *RegisterStudentInput) (*R
 		DefaultStudentNo:   input.DefaultStudentNo,
 		FirstName:          trimStringPtr(input.FirstName),
 		LastName:           trimStringPtr(input.LastName),
+		NickName:           trimStringPtr(input.NickName),
+		Dob:                input.Dob,
+		BloodType:          trimStringPtr(input.BloodType),
+		Religion:           trimStringPtr(input.Religion),
+		Nationality:        trimStringPtr(input.Nationality),
 		CitizenID:          trimStringPtr(input.CitizenID),
 		Phone:              trimStringPtr(input.Phone),
 		IsActive:           input.IsActive,
@@ -333,6 +382,11 @@ func (s *Service) Register(ctx context.Context, input *RegisterStudentInput) (*R
 		return nil, fmt.Errorf("failed to create student after %d code retries", maxStudentCodeGenerateRetry)
 	}
 
+	if err := s.replaceMemberAddresses(ctx, member.ID, input.Addresses); err != nil {
+		runCleanup()
+		return nil, err
+	}
+
 	result := &RegisterStudentResult{
 		StudentMember: member,
 		Student:       student,
@@ -356,6 +410,51 @@ func (s *Service) Register(ctx context.Context, input *RegisterStudentInput) (*R
 	result.ParentStudent = parentStudent
 
 	return result, nil
+}
+
+func (s *Service) ListAddressesByMemberID(ctx context.Context, memberID uuid.UUID) ([]*ent.MemberAddress, error) {
+	return s.db.ListMemberAddressesByMemberID(ctx, memberID)
+}
+
+func (s *Service) replaceMemberAddresses(ctx context.Context, memberID uuid.UUID, items []MemberAddressInput) error {
+	addresses := make([]*ent.MemberAddress, 0, len(items))
+	for i, item := range items {
+		line := strings.TrimSpace(item.AddressLine)
+		if line == "" {
+			continue
+		}
+
+		sortOrder := item.SortOrder
+		if sortOrder < 0 {
+			sortOrder = i
+		}
+
+		addresses = append(addresses, &ent.MemberAddress{
+			Label:       trimStringPtr(item.Label),
+			AddressLine: line,
+			IsPrimary:   item.IsPrimary,
+			SortOrder:   sortOrder,
+		})
+	}
+
+	if len(addresses) > 0 {
+		primaryIndex := -1
+		for idx, item := range addresses {
+			if !item.IsPrimary {
+				continue
+			}
+			if primaryIndex == -1 {
+				primaryIndex = idx
+				continue
+			}
+			item.IsPrimary = false
+		}
+		if primaryIndex == -1 {
+			addresses[0].IsPrimary = true
+		}
+	}
+
+	return s.db.ReplaceMemberAddressesByMemberID(ctx, memberID, addresses)
 }
 
 func (s *Service) createParentForStudent(ctx context.Context, studentInput *RegisterStudentInput, student *ent.MemberStudent, input *RegisterParentInput) (*ent.Member, *ent.MemberParent, *ent.MemberParentStudent, error) {

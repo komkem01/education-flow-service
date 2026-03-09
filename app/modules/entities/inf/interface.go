@@ -232,6 +232,11 @@ type MemberRoleEntity interface {
 	MemberHasAnyRole(ctx context.Context, memberID uuid.UUID, roles []ent.MemberRole) (bool, error)
 }
 
+type MemberAddressEntity interface {
+	ListMemberAddressesByMemberID(ctx context.Context, memberID uuid.UUID) ([]*ent.MemberAddress, error)
+	ReplaceMemberAddressesByMemberID(ctx context.Context, memberID uuid.UUID, addresses []*ent.MemberAddress) error
+}
+
 type MemberTeacherEntity interface {
 	CreateTeacher(ctx context.Context, teacher *ent.MemberTeacher) (*ent.MemberTeacher, error)
 	GetTeacherByID(ctx context.Context, id uuid.UUID) (*ent.MemberTeacher, error)

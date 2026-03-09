@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
+	"time"
 
 	"education-flow/app/modules/auth"
 	"education-flow/app/modules/entities/ent"
@@ -27,18 +28,24 @@ func newController(trace trace.Tracer, svc *Service) *Controller {
 }
 
 type createStudentRequest struct {
-	MemberID           string  `json:"member_id" binding:"required,uuid"`
-	GenderID           *string `json:"gender_id" binding:"omitempty,uuid"`
-	PrefixID           *string `json:"prefix_id" binding:"omitempty,uuid"`
-	AdvisorTeacherID   *string `json:"advisor_teacher_id" binding:"omitempty,uuid"`
-	CurrentClassroomID *string `json:"current_classroom_id" binding:"omitempty,uuid"`
-	StudentCode        *string `json:"student_code" binding:"omitempty,max=255"`
-	DefaultStudentNo   *int    `json:"default_student_no" binding:"omitempty,min=1"`
-	FirstName          *string `json:"first_name" binding:"omitempty,max=255"`
-	LastName           *string `json:"last_name" binding:"omitempty,max=255"`
-	CitizenID          *string `json:"citizen_id" binding:"omitempty,max=13"`
-	Phone              *string `json:"phone" binding:"omitempty,max=50"`
-	IsActive           *bool   `json:"is_active"`
+	MemberID           string                  `json:"member_id" binding:"required,uuid"`
+	GenderID           *string                 `json:"gender_id" binding:"omitempty,uuid"`
+	PrefixID           *string                 `json:"prefix_id" binding:"omitempty,uuid"`
+	AdvisorTeacherID   *string                 `json:"advisor_teacher_id" binding:"omitempty,uuid"`
+	CurrentClassroomID *string                 `json:"current_classroom_id" binding:"omitempty,uuid"`
+	StudentCode        *string                 `json:"student_code" binding:"omitempty,max=255"`
+	DefaultStudentNo   *int                    `json:"default_student_no" binding:"omitempty,min=1"`
+	FirstName          *string                 `json:"first_name" binding:"omitempty,max=255"`
+	LastName           *string                 `json:"last_name" binding:"omitempty,max=255"`
+	NickName           *string                 `json:"nick_name" binding:"omitempty,max=255"`
+	Dob                *string                 `json:"dob" binding:"omitempty,max=10"`
+	BloodType          *string                 `json:"blood_type" binding:"omitempty,max=10"`
+	Religion           *string                 `json:"religion" binding:"omitempty,max=100"`
+	Nationality        *string                 `json:"nationality" binding:"omitempty,max=100"`
+	CitizenID          *string                 `json:"citizen_id" binding:"omitempty,max=13"`
+	Phone              *string                 `json:"phone" binding:"omitempty,max=50"`
+	Addresses          *[]memberAddressRequest `json:"addresses" binding:"omitempty,dive"`
+	IsActive           *bool                   `json:"is_active"`
 }
 
 type updateStudentRequest = createStudentRequest
@@ -55,10 +62,32 @@ type registerStudentRequest struct {
 	DefaultStudentNo   *int                          `json:"default_student_no" binding:"omitempty,min=1"`
 	FirstName          *string                       `json:"first_name" binding:"omitempty,max=255"`
 	LastName           *string                       `json:"last_name" binding:"omitempty,max=255"`
+	NickName           *string                       `json:"nick_name" binding:"omitempty,max=255"`
+	Dob                *string                       `json:"dob" binding:"omitempty,max=10"`
+	BloodType          *string                       `json:"blood_type" binding:"omitempty,max=10"`
+	Religion           *string                       `json:"religion" binding:"omitempty,max=100"`
+	Nationality        *string                       `json:"nationality" binding:"omitempty,max=100"`
 	CitizenID          *string                       `json:"citizen_id" binding:"omitempty,max=13"`
 	Phone              *string                       `json:"phone" binding:"omitempty,max=50"`
+	Addresses          *[]memberAddressRequest       `json:"addresses" binding:"omitempty,dive"`
 	IsActive           *bool                         `json:"is_active"`
 	Parent             *registerStudentParentRequest `json:"parent" binding:"omitempty"`
+}
+
+type memberAddressRequest struct {
+	Label       *string `json:"label" binding:"omitempty,max=100"`
+	AddressLine string  `json:"address_line" binding:"required,max=1000"`
+	IsPrimary   *bool   `json:"is_primary"`
+	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=0,max=1000"`
+}
+
+type memberAddressResponse struct {
+	ID          string  `json:"id"`
+	MemberID    string  `json:"member_id"`
+	Label       *string `json:"label"`
+	AddressLine string  `json:"address_line"`
+	IsPrimary   bool    `json:"is_primary"`
+	SortOrder   int     `json:"sort_order"`
 }
 
 type registerStudentParentRequest struct {
@@ -76,19 +105,26 @@ type registerStudentParentRequest struct {
 }
 
 type studentResponse struct {
-	ID                 string  `json:"id"`
-	MemberID           string  `json:"member_id"`
-	GenderID           *string `json:"gender_id"`
-	PrefixID           *string `json:"prefix_id"`
-	AdvisorTeacherID   *string `json:"advisor_teacher_id"`
-	CurrentClassroomID *string `json:"current_classroom_id"`
-	StudentCode        *string `json:"student_code"`
-	DefaultStudentNo   *int    `json:"default_student_no"`
-	FirstName          *string `json:"first_name"`
-	LastName           *string `json:"last_name"`
-	CitizenID          *string `json:"citizen_id"`
-	Phone              *string `json:"phone"`
-	IsActive           bool    `json:"is_active"`
+	ID                 string                  `json:"id"`
+	MemberID           string                  `json:"member_id"`
+	CreatedAt          string                  `json:"created_at"`
+	GenderID           *string                 `json:"gender_id"`
+	PrefixID           *string                 `json:"prefix_id"`
+	AdvisorTeacherID   *string                 `json:"advisor_teacher_id"`
+	CurrentClassroomID *string                 `json:"current_classroom_id"`
+	StudentCode        *string                 `json:"student_code"`
+	DefaultStudentNo   *int                    `json:"default_student_no"`
+	FirstName          *string                 `json:"first_name"`
+	LastName           *string                 `json:"last_name"`
+	NickName           *string                 `json:"nick_name"`
+	Dob                *string                 `json:"dob"`
+	BloodType          *string                 `json:"blood_type"`
+	Religion           *string                 `json:"religion"`
+	Nationality        *string                 `json:"nationality"`
+	CitizenID          *string                 `json:"citizen_id"`
+	Phone              *string                 `json:"phone"`
+	Addresses          []memberAddressResponse `json:"addresses"`
+	IsActive           bool                    `json:"is_active"`
 }
 
 type registerStudentResponse struct {
@@ -163,11 +199,17 @@ func (c *Controller) Register(ctx *gin.Context) {
 		base.BadRequest(ctx, ci18n.InvalidID, nil)
 		return
 	}
+	dob, err := parseDOBPtr(req.Dob)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
 
 	parentInput, ok := parseRegisterParentInput(ctx, req.Parent)
 	if !ok {
 		return
 	}
+	addresses := parseMemberAddressInputs(req.Addresses)
 
 	isActive := true
 	if req.IsActive != nil {
@@ -186,8 +228,14 @@ func (c *Controller) Register(ctx *gin.Context) {
 		DefaultStudentNo:   req.DefaultStudentNo,
 		FirstName:          req.FirstName,
 		LastName:           req.LastName,
+		NickName:           req.NickName,
+		Dob:                dob,
+		BloodType:          req.BloodType,
+		Religion:           req.Religion,
+		Nationality:        req.Nationality,
 		CitizenID:          req.CitizenID,
 		Phone:              req.Phone,
+		Addresses:          addresses,
 		IsActive:           isActive,
 		Parent:             parentInput,
 	})
@@ -221,9 +269,16 @@ func (c *Controller) Register(ctx *gin.Context) {
 		return
 	}
 
+	studentAddresses, err := c.svc.ListAddressesByMemberID(ctx.Request.Context(), result.Student.MemberID)
+	if err != nil {
+		log.Errf("students.register.addresses.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+
 	response := registerStudentResponse{
 		Member:  toMemberRegisterResponse(result.StudentMember),
-		Student: toStudentResponse(result.Student),
+		Student: toStudentResponse(result.Student, studentAddresses),
 	}
 	if result.ParentMember != nil && result.Parent != nil && result.ParentStudent != nil {
 		response.Parent = &registerParentResponse{
@@ -254,11 +309,17 @@ func (c *Controller) Create(ctx *gin.Context) {
 	if !ok {
 		return
 	}
+	dob, err := parseDOBPtr(req.Dob)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
-	student, err := c.svc.Create(ctx.Request.Context(), &CreateStudentInput{SchoolID: claims.SchoolID, MemberID: memberID, GenderID: genderID, PrefixID: prefixID, AdvisorTeacherID: advisorTeacherID, CurrentClassroomID: currentClassroomID, StudentCode: req.StudentCode, DefaultStudentNo: req.DefaultStudentNo, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, IsActive: isActive})
+	addresses := parseMemberAddressInputs(req.Addresses)
+	student, err := c.svc.Create(ctx.Request.Context(), &CreateStudentInput{SchoolID: claims.SchoolID, MemberID: memberID, GenderID: genderID, PrefixID: prefixID, AdvisorTeacherID: advisorTeacherID, CurrentClassroomID: currentClassroomID, StudentCode: req.StudentCode, DefaultStudentNo: req.DefaultStudentNo, FirstName: req.FirstName, LastName: req.LastName, NickName: req.NickName, Dob: dob, BloodType: req.BloodType, Religion: req.Religion, Nationality: req.Nationality, CitizenID: req.CitizenID, Phone: req.Phone, Addresses: addresses, IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, ErrStudentSchoolMismatch) {
 			base.Forbidden(ctx, ci18n.Forbidden, nil)
@@ -272,7 +333,13 @@ func (c *Controller) Create(ctx *gin.Context) {
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
 	}
-	base.Success(ctx, toStudentResponse(student))
+	studentAddresses, err := c.svc.ListAddressesByMemberID(ctx.Request.Context(), student.MemberID)
+	if err != nil {
+		log.Errf("students.create.addresses.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	base.Success(ctx, toStudentResponse(student, studentAddresses))
 }
 
 func (c *Controller) List(ctx *gin.Context) {
@@ -315,7 +382,13 @@ func (c *Controller) List(ctx *gin.Context) {
 	}
 	response := make([]studentResponse, 0, len(students))
 	for _, student := range students {
-		response = append(response, toStudentResponse(student))
+		addresses, addrErr := c.svc.ListAddressesByMemberID(ctx.Request.Context(), student.MemberID)
+		if addrErr != nil {
+			log.Errf("students.list.addresses.error: %v", addrErr)
+			base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+			return
+		}
+		response = append(response, toStudentResponse(student, addresses))
 	}
 	base.Success(ctx, response)
 }
@@ -346,7 +419,13 @@ func (c *Controller) Get(ctx *gin.Context) {
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
 	}
-	base.Success(ctx, toStudentResponse(student))
+	addresses, err := c.svc.ListAddressesByMemberID(ctx.Request.Context(), student.MemberID)
+	if err != nil {
+		log.Errf("students.get.addresses.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	base.Success(ctx, toStudentResponse(student, addresses))
 }
 
 func (c *Controller) Update(ctx *gin.Context) {
@@ -370,11 +449,17 @@ func (c *Controller) Update(ctx *gin.Context) {
 	if !ok {
 		return
 	}
+	dob, err := parseDOBPtr(req.Dob)
+	if err != nil {
+		base.BadRequest(ctx, ci18n.BadRequest, nil)
+		return
+	}
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
-	student, err := c.svc.UpdateByID(ctx.Request.Context(), studentID, &UpdateStudentInput{SchoolID: claims.SchoolID, MemberID: memberID, GenderID: genderID, PrefixID: prefixID, AdvisorTeacherID: advisorTeacherID, CurrentClassroomID: currentClassroomID, StudentCode: req.StudentCode, DefaultStudentNo: req.DefaultStudentNo, FirstName: req.FirstName, LastName: req.LastName, CitizenID: req.CitizenID, Phone: req.Phone, IsActive: isActive})
+	addresses := parseMemberAddressInputs(req.Addresses)
+	student, err := c.svc.UpdateByID(ctx.Request.Context(), studentID, &UpdateStudentInput{SchoolID: claims.SchoolID, MemberID: memberID, GenderID: genderID, PrefixID: prefixID, AdvisorTeacherID: advisorTeacherID, CurrentClassroomID: currentClassroomID, StudentCode: req.StudentCode, DefaultStudentNo: req.DefaultStudentNo, FirstName: req.FirstName, LastName: req.LastName, NickName: req.NickName, Dob: dob, BloodType: req.BloodType, Religion: req.Religion, Nationality: req.Nationality, CitizenID: req.CitizenID, Phone: req.Phone, Addresses: addresses, IsActive: isActive})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			base.ValidateFailed(ctx, ci18n.StudentNotFound, nil)
@@ -392,7 +477,13 @@ func (c *Controller) Update(ctx *gin.Context) {
 		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
 		return
 	}
-	base.Success(ctx, toStudentResponse(student))
+	studentAddresses, err := c.svc.ListAddressesByMemberID(ctx.Request.Context(), student.MemberID)
+	if err != nil {
+		log.Errf("students.update.addresses.error: %v", err)
+		base.InternalServerError(ctx, ci18n.InternalServerError, nil)
+		return
+	}
+	base.Success(ctx, toStudentResponse(student, studentAddresses))
 }
 
 func (c *Controller) Delete(ctx *gin.Context) {
@@ -457,8 +548,70 @@ func parseStudentCreateUpdateFields(ctx *gin.Context, memberIDRaw string, gender
 	return memberID, genderID, prefixID, advisorTeacherID, currentClassroomID, true
 }
 
-func toStudentResponse(student *ent.MemberStudent) studentResponse {
-	return studentResponse{ID: student.ID.String(), MemberID: student.MemberID.String(), GenderID: utils.UUIDToStringPtr(student.GenderID), PrefixID: utils.UUIDToStringPtr(student.PrefixID), AdvisorTeacherID: utils.UUIDToStringPtr(student.AdvisorTeacherID), CurrentClassroomID: utils.UUIDToStringPtr(student.CurrentClassroomID), StudentCode: student.StudentCode, DefaultStudentNo: student.DefaultStudentNo, FirstName: student.FirstName, LastName: student.LastName, CitizenID: student.CitizenID, Phone: student.Phone, IsActive: student.IsActive}
+func toStudentResponse(student *ent.MemberStudent, addresses []*ent.MemberAddress) studentResponse {
+	var dob *string
+	if student.Dob != nil {
+		v := student.Dob.UTC().Format("2006-01-02")
+		dob = &v
+	}
+
+	addressResponse := make([]memberAddressResponse, 0, len(addresses))
+	for _, item := range addresses {
+		addressResponse = append(addressResponse, memberAddressResponse{
+			ID:          item.ID.String(),
+			MemberID:    item.MemberID.String(),
+			Label:       item.Label,
+			AddressLine: item.AddressLine,
+			IsPrimary:   item.IsPrimary,
+			SortOrder:   item.SortOrder,
+		})
+	}
+
+	return studentResponse{ID: student.ID.String(), MemberID: student.MemberID.String(), CreatedAt: student.CreatedAt.UTC().Format(time.RFC3339), GenderID: utils.UUIDToStringPtr(student.GenderID), PrefixID: utils.UUIDToStringPtr(student.PrefixID), AdvisorTeacherID: utils.UUIDToStringPtr(student.AdvisorTeacherID), CurrentClassroomID: utils.UUIDToStringPtr(student.CurrentClassroomID), StudentCode: student.StudentCode, DefaultStudentNo: student.DefaultStudentNo, FirstName: student.FirstName, LastName: student.LastName, NickName: student.NickName, Dob: dob, BloodType: student.BloodType, Religion: student.Religion, Nationality: student.Nationality, CitizenID: student.CitizenID, Phone: student.Phone, Addresses: addressResponse, IsActive: student.IsActive}
+}
+
+func parseMemberAddressInputs(raw *[]memberAddressRequest) []MemberAddressInput {
+	if raw == nil {
+		return []MemberAddressInput{}
+	}
+
+	items := make([]MemberAddressInput, 0, len(*raw))
+	for i, item := range *raw {
+		isPrimary := false
+		if item.IsPrimary != nil {
+			isPrimary = *item.IsPrimary
+		}
+		sortOrder := i
+		if item.SortOrder != nil {
+			sortOrder = *item.SortOrder
+		}
+
+		items = append(items, MemberAddressInput{
+			Label:       item.Label,
+			AddressLine: item.AddressLine,
+			IsPrimary:   isPrimary,
+			SortOrder:   sortOrder,
+		})
+	}
+
+	return items
+}
+
+func parseDOBPtr(raw *string) (*time.Time, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	if *raw == "" {
+		return nil, nil
+	}
+
+	v, err := time.Parse("2006-01-02", *raw)
+	if err != nil {
+		return nil, err
+	}
+
+	t := time.Date(v.Year(), v.Month(), v.Day(), 0, 0, 0, 0, time.UTC)
+	return &t, nil
 }
 
 func isDuplicateKeyError(err error) bool {

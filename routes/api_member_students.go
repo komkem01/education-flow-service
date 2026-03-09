@@ -20,6 +20,7 @@ func apiMemberStudents(r *gin.RouterGroup, mod *modules.Modules) {
 	protected.GET("/students-meta/schools/:id", mod.School.Ctl.Get)
 	protected.GET("/students-meta/academic-years/:id", mod.AcademicYear.Ctl.Get)
 	protected.GET("/students-meta/classrooms/:id", mod.Classroom.Ctl.Get)
+	protected.GET("/students-meta/genders/:id", mod.Gender.Ctl.Get)
 	protected.GET("/students-meta/subjects/:id", mod.Subject.Ctl.Get)
 	protected.GET("/students-meta/teachers/:id", mod.Teacher.Ctl.Get)
 	protected.GET("/students-meta/prefixes/:id", mod.Prefix.Ctl.Get)

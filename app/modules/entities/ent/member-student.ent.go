@@ -20,6 +20,11 @@ type MemberStudent struct {
 	DefaultStudentNo   *int       `bun:"default_student_no"`
 	FirstName          *string    `bun:"first_name"`
 	LastName           *string    `bun:"last_name"`
+	NickName           *string    `bun:"nick_name"`
+	Dob                *time.Time `bun:"dob,type:date"`
+	BloodType          *string    `bun:"blood_type"`
+	Religion           *string    `bun:"religion"`
+	Nationality        *string    `bun:"nationality"`
 	CitizenID          *string    `bun:"citizen_id"`
 	Phone              *string    `bun:"phone"`
 	IsActive           bool       `bun:"is_active,notnull"`
