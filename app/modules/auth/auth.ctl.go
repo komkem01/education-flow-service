@@ -164,6 +164,11 @@ func (c *Controller) Permissions(ctx *gin.Context) {
 	})
 }
 
+func (c *Controller) Logout(ctx *gin.Context) {
+	// JWT auth is stateless in this service. Client-side token disposal completes logout.
+	base.Success(ctx, gin.H{"success": true})
+}
+
 func (c *Controller) Refresh(ctx *gin.Context) {
 	claims, ok := GetClaimsFromGin(ctx)
 	if !ok {

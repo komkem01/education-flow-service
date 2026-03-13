@@ -13,6 +13,7 @@ func apiAuth(r *gin.RouterGroup, mod *modules.Modules) {
 	authProtected.Use(requireAuth(mod))
 	authProtected.GET("/me", mod.Auth.Ctl.Me)
 	authProtected.GET("/permissions", mod.Auth.Ctl.Permissions)
+	authProtected.POST("/logout", mod.Auth.Ctl.Logout)
 	authProtected.POST("/refresh", mod.Auth.Ctl.Refresh)
 	authProtected.POST("/switch-role", mod.Auth.Ctl.SwitchRole)
 	authProtected.POST("/switch-school", mod.Auth.Ctl.SwitchSchool)
