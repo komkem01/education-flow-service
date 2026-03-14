@@ -42,11 +42,4 @@ func Router(app *gin.Engine, mod *modules.Modules) {
 	app.Use(auditLogMiddleware(mod))
 
 	api(app.Group("/api/v1"), mod)
-	apiAuth(app.Group("/api/v1"), mod)
-	apiMasterData(app.Group("/api/v1"), mod)
-	apiMemberTeachers(app.Group("/api/v1"), mod)
-	apiMemberStudents(app.Group("/api/v1"), mod)
-	apiMemberStaffs(app.Group("/api/v1"), mod)
-	apiMemberAdmins(app.Group("/api/v1"), mod)
-	apiBackOffice(app.Group("/api/v1"), mod)
 }
